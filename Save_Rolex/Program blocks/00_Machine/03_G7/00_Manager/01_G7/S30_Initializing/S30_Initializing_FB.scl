@@ -1,0 +1,27 @@
+﻿FUNCTION_BLOCK "S30_Initializing_FB"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      Step : Int;
+   END_VAR
+
+   VAR 
+      Step_100 : Int;
+   END_VAR
+
+
+BEGIN
+	
+	                (* Manager : S30_Initializing *)
+	
+	// Etape en cours
+	#Step := #Step_100;
+	
+	CASE #Step_100 OF
+	        
+	    0:  // Etape Init
+	        #Step_100 := 10;
+	        
+	END_CASE;
+END_FUNCTION_BLOCK
+

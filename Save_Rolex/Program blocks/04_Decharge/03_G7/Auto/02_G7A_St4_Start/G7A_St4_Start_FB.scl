@@ -1,0 +1,29 @@
+﻿FUNCTION_BLOCK "G7A_St4_Start_FB"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      Step : Int;
+   END_VAR
+
+   VAR 
+      Step_100 { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      Authorization : Bool;
+   END_VAR
+
+
+BEGIN
+	                
+	                (* G7 Auto : Start
+	            Station 4 : Déchargement *)
+	
+	// Etape en cours
+	    #Step := #Step_100;
+	    
+	CASE #Step_100 OF
+	        
+	    0:  // Etape Init
+	        #Step_100 := 10;
+	        
+	END_CASE;
+END_FUNCTION_BLOCK
+

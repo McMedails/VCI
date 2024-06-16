@@ -1,0 +1,1533 @@
+﻿FUNCTION_BLOCK "SINA_POS"
+TITLE = 'Positioning with SINAMICS and S7'
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : DRVDPS7
+FAMILY : DRIVES
+NAME : SINA_POS
+VERSION : 5.7
+//Copyright (C) Siemens AG 2012. All Rights Reserved. Confidential
+//-------------------------------------------------------------------------------------- 
+//SINA_POS: Positionierung mit dem Antriebsbaustein SINAMICS S120/G120 <-> S7-1200
+//------------------------------------------------------------------------------------- Ersteller: Siemens AG Erlangen A&D MC PM   Datum:  07.07.10        Vers.:2.1
+//Änderung:  J.B. Typical Team                       18.12.12              2.2
+//    Umsetzung in SCL / TIA 
+//Änderung:  J.B. Typical Team                       18.04.13              2.3
+//    Bei Betriebsart "Referenzieren - Referenzpunkt setzen"
+//    nicht intern setzen sondern Eingang #Execute abfragen als 
+//    Startbedingung
+//Änderung:  J.B. Typical Team                       29.04.13              2.4
+//    1. Off1 möglich bei ungültige Betriebsart
+//    2. Referenzpunkt setzen Exceute übernehmen
+//    3. Fehlermeldung ausgeben bei Wechel ohne 
+//       Beendigung der Betriebsart 
+//    4. "Q" an den Ausgänge entfernen
+//    5. Neuer Ausgang PwrInhibit
+//     
+//Änderung:  J.B. Typical Team                       14.05.13              2.5
+//    Fehlerbehebung und Defaultwerte ändern
+//Änderung:  J.B. Typical Team                       28.06.13              2.6
+//    HW-Zugriffsermittlung über LOG2MOD
+//Änderung:  J.B. Typical Team                       18.07.13              2.7
+//    HW-Zugriffsermittlung über zwei HW-Eingänge
+//Änderung:  J.B. Typical Team                       18.09.13              2.8
+//    Konvertierungsfehler behoben
+//Änderung:  J.B. Typical Team                       25.09.13              2.9
+//    Bei Betriebswechsel von 3 nach 6 darf MidStart nicht sitzen
+//Änderung:  J.B. Typical Team                       31.03.14              3.0
+//    In der Betriebsart 1-3 und 6 darf MidTrTyp nicht sitzen
+//Änderung:  J.B. Typical Team                       25.06.14              3.1
+//    Das Quittierbit "AckFlt" immer durchreichen
+//Änderung:  J.B. Typical Team                       30.07.14              4.0
+//    Festlegung auf einheitlicher neuer Version 4.0
+//Änderung:  J.B. Typical Team                       07.11.14              4.1
+//    Fehlerbehebung falsche Zuweisung von Off1 bei Mode 4
+//    und Mode 8(DriveLib V4 - RQ 346046)
+//Änderung:  F.G. Typical Team                       16.04.15              4.2
+//    Anzahl der Zyklen die auf die Rückmeldung fliegendes Ref.
+//    gewartet wird verdoppelt (siRetryMax = 10)  (DriveLib V4 - RQ 367986)
+//Änderung:  F.G. Typical Team                       15.09.15              4.3
+//    Anzahl der Zyklen die auf die Rückmeldung fliegendes Ref.
+//    gewartet noch einmal um 5 erhöht (siRetryMax = 15)  (DriveLib V4 - RQ 367986)
+//Änderung:  F.G. Typical Team                       15.09.15              4.4
+//    Abfrage des richtigen Bits im EPosZSW1 (Zeile 1394)es muss das Bit12 
+//    und nicht das Bit 11 abgefragt werden  (DriveLib V4 - RQ 367986)
+//Änderung:  F.G. Typical Team                       03.12.15              4.5
+//    1. Ein-/Ausgänge an Programmierleitfaden für TIA-Portal angepasst
+//       Zusätzlicher Eingang um alle Bits in den STWs zu bedienen
+//    2. Warnung durch Initialisierung elimininiert
+//Änderung:  F.G. Typical Team                       13.09.16              4.6
+//    Ausgabewerte am Ausgang "Status" angepasst 
+//
+//Änderung:  G.F. Typical Team                       11.01.17              5.0
+//    - Festlegung auf einheitlicher neuer Version 5.0 
+//
+//Änderung:  G.F. Typical Team                       13.07.17              5.1
+//    - Zuordnung der Bits von ConfigPos korrigiert 
+//
+//Änderung:  G.F. Typical Team                       12.01.18              5.2
+//    - RQ2637983 sxSendBuf.EPosSTW2.%X1 in Mode 7 und 8 rücksetzen 
+//Änderung:  G.F. Typical Team                       20.07.18              5.3
+//    - ZSW1.13 als Ausgang zur Verfügung gestellt (wegen FW - Änderung)
+//Änderung:  G.F. Typical Team                       18.10.18              5.4
+//    - RQ 824321 Zähler für fliegendes Referenzieren zurücksetzen
+//Änderung:  G.F. Typical Team                       08.02.19              5.5
+//    - Version wegen Änderungen in älteren Lib-Versionen 
+//Änderung:  G.F. Typical Team                       08.02.19              5.6
+//    - RQ 3901129 Fehler Flankenauswertung Eingang ExecuteMode behoben Bibliothek V7
+//Änderung:  G.F. Typical Team                       17.05.19              5.7
+//    - RQ 4094299 Fehler Referenzfahrt wird nicht gestartet behoben Bibliothek V7
+//Funktion: Positionierung mit dem Antriebsbaustein SINAMICS S120/G120 <-> S7-1200
+//********************************************************************************************************************************************************
+//************************************************************************FB283***************************************************************************
+//********************************************************************************************************************************************************
+   VAR_INPUT 
+      ModePos : Int := 0;   // Settings of the mode
+      EnableAxis : Bool := 0;   // 1 = Enable the drive
+      CancelTraversing : Bool := 1;   // 0 = Reject active traverse task
+      IntermediateStop : Bool := 1;   // 0 = Intermediate STOP of traverse command
+      Positive : Bool := 0;   // 1 = Direction positive
+      Negative : Bool := 0;   // 1 = Direction negative
+      Jog1 : Bool := 0;   // 1 = Use jog 1 (direction / speed)
+      Jog2 : Bool := 0;   // 1 = Use jog 2 (direction / speed)
+      FlyRef : Bool := 0;   // 1 = Start flying reference function
+      AckError : Bool := 0;   // 1  = Acknowledge of errors
+      ExecuteMode : Bool := 0;   // 0-->1 = Start the mode
+      Position : DInt := 0;   // Position of the MDI mode or setting of traversing block
+      Velocity : DInt := 0;   // MDI velocity
+      OverV : Int := 100;   // Override of  velocity in [%] --> 4000h=100%
+      OverAcc : Int := 100;   // Override of acceleration in [%] --> 4000h=100%
+      OverDec : Int := 100;   // Override of deceleration in [%] --> 4000h=100%
+      ConfigEPos : DWord := 16#0000_0003;   // binary programmed input to control all functions in the telegram without its own function block input
+      HWIDSTW : HW_IO := 0;   // Hardware Identifer set point slot
+      HWIDZSW : HW_IO := 0;   // Hardware Identifer actual value slot
+   END_VAR
+
+   VAR_OUTPUT 
+      AxisEnabled : Bool := 0;   // 1= Axis in operation
+      AxisPosOk : Bool := 0;   // 1= Position setpoint reached
+      AxisSpFixed : Bool := 0;   // 1= Setpoint fixed (Attention: Dependence on SINAMICS firmware)
+      AxisRef : Bool := 0;   // 1= Reference point set
+      AxisWarn : Bool := 0;   // 1= Axis alarm / warning present
+      AxisError : Bool := 0;   // 1= Axis fault present
+      Lockout : Bool := 0;   // 1= Axis in lockout state
+      ActVelocity : DInt := 0;   // Actual drive speed (has to be normed with p2000 --> 40000000h = 100%)
+      ActPosition : DInt := 0;   // Actual position in [LU]
+      ActMode : Int := 0;   // Active EPos mode
+      EPosZSW1 : Word := 0;   // Status of EPOS ZSW1
+      EPosZSW2 : Word := 0;   // Status of EPOS ZSW2
+      ActWarn : Word := 0;   // Actual number of warning
+      ActFault : Word := 0;   // Actual number of error
+      Error : Bool := 0;   // 1 = Error  (FB and Infeed)
+      Status : Word := 0;   // Status output (7002 = FB in operation; 8xxx = error description  - read the manual)
+      DiagID : Word := 0;   // Error codes of the cyclic system funtion blocks DPWR / DPRD_DAT
+   END_VAR
+
+   VAR 
+      sbOff1Edge : Bool := 0;   // Positive edge of starting or stopping the device
+      sbOff1 : Bool := 0;   // Starting or stopping the device
+      sbExecuteEdge : Bool := 0;   // Positive edge of activate traversing block
+      sbExecute : Bool := 0;   // Activate traversing block
+      sbRefTypEdge : Bool := 0;   // Positive edge of referencing type "flying reference"
+      sbRefTyp : Bool := 0;   // Referencing type "flying reference"
+      sbMdiStart : Bool := 0;   // Direct setpoint input / MDI - start
+      sbMdiStartEdge : Bool := 0;   // Positive edge of direct setpoint input / MDI - start
+      sbRefStart : Bool := 0;   // Referencing start
+      sbJogInc : Bool := 0;   // Jogging incremental
+      sbReady : Bool := 0;   // Ready to power up / to start
+      sbIOp : Bool := 0;   // Ready to operate
+      sbAccel : Bool := 0;   // Axis accelerating
+      sbDecel : Bool := 0;   // Axis decelerating
+      sbAlarm : Bool := 0;   // Alarm / Warnung present
+      sbFault : Bool := 0;   // Fault present
+      sbFWD : Bool := 0;   // Axis drives forwards
+      sbBWD : Bool := 0;   // Axis drives backwards
+      sbBusy : Bool := 0;   // Mode of operation is explained
+      swStatus : Word := 16#0000;   // Mode of operation disturbance
+      swEPosZSW1 : Word := 16#0000;   // Status of EPOS ZSW1
+      swEPosZSW2 : Word := 16#0000;   // Status of EPOS ZSW2
+      siExecuteCyc : Int := 0;   // Counter of runcycle of active traversing block
+      siRefTypCyc : Int := 0;   // Counter of runcycle of referencing type "flying reference"
+      siJogIncCyc : Int := 0;   // Counter of runcycle of jogging incremental
+      siMdiStartCyc : Int := 0;   // Counter of runcycle of direct setpoint input / MDI - start
+      siRefActRetry : Int := 0;   // Counter of retry of reference point approach active
+      siModePos : Int := 0;   // Setting of mode
+      siModePosMax : Int := 8;   // Max. count of mode
+      siCycWait : Int := 5;   // Counter of cycle of waiting
+      siRetryMax : Int := 30;   // Max. count of cycles of retry
+      sbModePos : Bool := 0;   // Mode of setting okay
+      sxSendBuf : Struct   // send buffer of telegram for sending data to the drive
+         STW1 : Word := WORD#16#0000;   // STW1sxSTW1     : STRUCT            Jog1            : BOOL:=0;              // ST-Wort-1 Bit 08 --> 1 = Jogging - signal source 1            Jog2            : BOOL:=0;              // ST-Wort-1 Bit 09 --> 1 = Jogging - signal source 2            LB              : BOOL:=1; // Allways   // ST-Wort-1 Bit 10 --> 1 = Life bit             RefStart        : BOOL:=0;              // ST-Wort-1 Bit 11 --> 1 = Referencing start / stop            Bit12           : BOOL:=0;              // ST-Wort-1 Bit 12 --> 1 = Reserve            Bit13           : BOOL:=0;              // ST-Wort-1 Bit 13 --> 1 = Externer Satzwechsel            Bit14           : BOOL:=0;              // ST-Wort-1 Bit 14 --> 1 = Reserve            Bit15           : BOOL:=0;              // ST-Wort-1 Bit 15 --> 1 = Reserve            Off1            : BOOL:=0;              // ST-Wort-1 Bit 00 --> 1 = OFF1/ON (flanks acceptance)            Off2            : BOOL:=1; // Allways   // ST-Wort-1 Bit 01 --> 1 = OFF2/ON (enable possible)            Off3            : BOOL:=1; // Allways   // ST-Wort-1 Bit 02 --> 1 = OFF3/ON (enable possible)            Enc             : BOOL:=1; // Allways   // ST-Wort-1 Bit 03 --> 1 = Enable controller            RejTrvTsk       : BOOL:=0;              // ST-Wort-1 Bit 04 --> 1 = Traversing block and MDI - reject task            IntMStop        : BOOL:=0;              // ST-Wort-1 Bit 05 --> 1 = Traversing block and MDI - intermediate - STOP            TrvStart        : BOOL:=0;              // ST-Wort-1 Bit 06 --> 1 = Traversing start - direct setpoint input / MDI - transfer edge            AckFault        : BOOL:=0;              // ST-Wort-1 Bit 07 --> 1 = Acknowledge fault         END_STRUCT;
+         EPosSTW1 : Word := WORD#16#0000;   // EPOSSTW1sxEPosSTW1   : STRUCT            MdiTyp          : BOOL:=0;              // EPOS-Wort-1 Bit 08 --> 1 = Direct setpoint input / MDI - positioning type            MdiPos          : BOOL:=0;              // EPOS-Wort-1 BIT 09 --> 1 = Direct setpoint input / MDI - positive direction            MdiNeg          : BOOL:=0;              // EPOS-Wort-1 BIT 10 --> 1 = Direct setpoint input / MDI - negative direction            Bit11           : BOOL:=0;              // EPOS-Wort-1 BIT 11 --> 1 = Reserve            MdiTrTyp        : BOOL:=0;              // EPOS-Wort-1 BIT 12 --> 1 = Direct setpoint input / MDI - transfer type            Bit13           : BOOL:=0;              // EPOS-Wort-1 BIT 13 --> 1 = Reserve            MdiSetup        : BOOL:=0;              // EPOS-Wort-1 BIT 14 --> 1 = Direct setpoint input / MDI - setup selection            MdiStart        : BOOL:=0;              // EPOS-Wort-1 BIT 15 --> 1 = Direct setpoint input / MDI - start              TrvBit0         : BOOL:=0;              // EPOS-Wort-1 BIT 00 --> 1 = Traversing block - block selection bit 0            TrvBit1         : BOOL:=0;              // EPOS-Wort-1 BIT 01 --> 1 = Traversing block - block selection bit 1            TrvBit2         : BOOL:=0;              // EPOS-Wort-1 BIT 02 --> 1 = Traversing block - block selection bit 2            TrvBit3         : BOOL:=0;              // EPOS-Wort-1 BIT 03 --> 1 = Traversing block - block selection bit 3            TrvBit4         : BOOL:=0;              // EPOS-Wort-1 BIT 04 --> 1 = Traversing block - block selection bit 4            TrvBit5         : BOOL:=0;              // EPOS-Wort-1 Bit 05 --> 1 = Traversing block - block selection bit 5            Bit06           : BOOL:=0;              // EPOS-Wort-1 Bit 06 --> 1 = Reserve            Bit07           : BOOL:=0;              // EPOS-Wort-1 Bit 07 --> 1 = Reserve          END_STRUCT;
+         EPosSTW2 : Word := WORD#16#0000;   // EPOSSTW2sxEPosSTW2   : STRUCT            RefTyp          : BOOL:=0;              // EPOS-Wort-2 Bit 08 --> 1 = Referencing type             RefStDi         : BOOL:=0;              // EPOS-Wort-2 Bit 09 --> 1 = Homing start direction            RefInpS         : BOOL:=0;              // EPOS-Wort-2 Bit 10 --> 1 = Referencing passive - input selection            RefEdge         : BOOL:=0;              // EPOS-Wort-2 Bit 11 --> 1 = Referencing passive - edge evaluation            Bit12           : BOOL:=0;              // EPOS-Wort-2 Bit 12 --> 1 = Reserve            Bit13           : BOOL:=0;              // EPOS-Wort-2 Bit 13 --> 1 = Reserve            SftLimAct       : BOOL:=0;              // EPOS-Wort-2 Bit 14 --> 1 = Software limit switch activation            StpCamAct       : BOOL:=0;              // EPOS-Wort-2 Bit 15 --> 1 = Stop output cam activation            TrkMode         : BOOL:=0;              // EPOS-Wort-2 Bit 00 --> 1 = Tracking mode active            SetRefPt        : BOOL:=0;              // EPOS-Wort-2 Bit 01 --> 1 = Set reference point            ActRefCam       : BOOL:=0;              // EPOS-Wort-2 Bit 02 --> 1 = Reference cam active            Bit03           : BOOL:=0;              // EPOS-Wort-2 Bit 03 --> 1 = Reserve            Bit04           : BOOL:=0;              // EPOS-Wort-2 Bit 04 --> 1 = Reserve            JogInc          : BOOL:=0;              // EPOS-Wort-2 Bit 05 --> 1 = Jogging - jogging incremental            Bit06           : BOOL:=0;              // EPOS-Wort-2 Bit 06 --> 1 = Reserve            Bit07           : BOOL:=0;              // EPOS-Wort-2 Bit 07 --> 1 = Reserve         END_STRUCT;
+         STW2 : Word := WORD#16#0000;   // STW2sxSTW2         : STRUCT            TrvFixStp       : BOOL:=0;              // ST-Wort-2 Bit 08 --> 1 = Travel fixed STOP            GlbTrgCom       : BOOL:=0;              // ST-Wort-2 Bit 09 --> 1 = Global trigger command            Bit10           : BOOL:=0;              // ST-Wort-2 Bit 10 --> 1 = Reserve            MotSwOver       : BOOL:=0;              // ST-Wort-2 Bit 11 --> 1 = Motor switch over finished            MsZykBit0       : BOOL:=0;              // ST-Wort-2 Bit 12 --> 1 = Master life bit 0            MsZykBit1       : BOOL:=0;              // ST-Wort-2 Bit 13 --> 1 = Master life bit 1            MsZykBit2       : BOOL:=0;              // ST-Wort-2 Bit 14 --> 1 = Master life bit 2            MsZykBit3       : BOOL:=0;              // ST-Wort-2 Bit 15 --> 1 = Master life bit 3            DDSBit0         : BOOL:=0;              // ST-Wort-2 Bit 00 --> 1 = Drive data set bit 0            DDSBit1         : BOOL:=0;              // ST-Wort-2 Bit 01 --> 1 = Drive data set bit 1            DDSBit2         : BOOL:=0;              // ST-Wort-2 Bit 02 --> 1 = Drive data set bit 2            DDSBit3         : BOOL:=0;              // ST-Wort-2 Bit 03 --> 1 = Drive data set bit 3            DDSBit4         : BOOL:=0;              // ST-Wort-2 Bit 04 --> 1 = Drive data set bit 4            GlbStart        : BOOL:=0;              // ST-Wort-2 Bit 05 --> 1 = Global start            ResIComp        : BOOL:=0;              // ST-Wort-2 Bit 06 --> 1 = Reset I-component of speed controller            ActPrkAxis      : BOOL:=0;              // ST-Wort-2 Bit 07 --> 1 = Activate parking axis            END_STRUCT;
+         OverrideV : Word := WORD#16#0000;   // Velocity override
+         Position : DWord := DWORD#16#0000_0000;   // Setpoint of position
+         Velocity : DWord := DWORD#16#0000_0000;   // Setpoint of velocity
+         OverrideA : Word := WORD#16#0000;   // Accelerating override
+         OverrideD : Word := WORD#16#0000;   // Decelerating override
+         Reserve : Word := WORD#16#0000;   // Reserve
+      END_STRUCT;
+      sxRecvBuf : Struct   // receive buffer of telegram for receiving data from the drive
+         ZSW1 : Word := WORD#16#0000;   // ZSW1sxZSW1         : STRUCT            NoFlwErr        : BOOL:=0;              // ZSW-Wort-1 Bit 08 --> 1 = Following error in tolerance            LbCr            : BOOL:=0;              // ZSW-Wort-1 Bit 09 --> 1 = Lifebit control request            TargPos         : BOOL:=0;              // ZSW-Wort-1 Bit 10 --> 1 = Target position reached            RefPSet         : BOOL:=0;              // ZSW-Wort-1 Bit 11 --> 1 = Reference point set            TrvTskAck       : BOOL:=0;              // ZSW-Wort-1 Bit 12 --> 1 = Traversing task acknowledge            StndStill       : BOOL:=0;              // ZSW-Wort-1 Bit 13 --> 1 = [n_ist] < Drehzahlsollwert 3            Accel           : BOOL:=0;              // ZSW-Wort-1 Bit 14 --> 1 = Axis accelerating            Decel           : BOOL:=0;              // ZSW-Wort-1 Bit 15 --> 1 = Axis decelerating            RTS             : BOOL:=0;              // ZSW-Wort-1 Bit 00 --> 1 = Ready to power up / to start            RDY             : BOOL:=0;              // ZSW-Wort-1 Bit 01 --> 1 = Ready to operate             IOp             : BOOL:=0;              // ZSW-Wort-1 Bit 02 --> 1 = In operation (operation enabled)            Fault           : BOOL:=0;              // ZSW-Wort-1 Bit 03 --> 1 = Fault present            NoOff2Act       : BOOL:=0;              // ZSW-Wort-1 Bit 04 --> 1 = OFF2 inactive            NoOff3Act       : BOOL:=0;              // ZSW-Wort-1 Bit 05 --> 1 = OFF3 inactive            PowInhbt        : BOOL:=0;              // ZSW-Wort-1 Bit 06 --> 1 = Power ON inhibit active             Alarm           : BOOL:=0;              // ZSW-Wort-1 Bit 07 --> 1 = Alarm / Warning present         END_STRUCT;
+         EPosZSW1 : Word := WORD#16#0000;   // EPOSZSW1sxEPosZSW1     : STRUCT            StpCamMinAct    : BOOL:=0;              // EPOS-Wort-1 Bit 08 --> 1 = STOP cam minus active            StpCamPlsAct    : BOOL:=0;              // EPOS-Wort-1 Bit 09 --> 1 = STOP cam plus active            JogAct          : BOOL:=0;              // EPOS-Wort-1 Bit 10 --> 1 = Jogging active            RefAct          : BOOL:=0;              // EPOS-Wort-1 Bit 11 --> 1 = Reference point approach active            FlyRefAct       : BOOL:=0;              // EPOS-Wort-1 Bit 12 --> 1 = Flying referencing active            TrvBlAct        : BOOL:=0;              // EPOS-Wort-1 Bit 13 --> 1 = Traversing block active            MdiStupAct      : BOOL:=0;              // EPOS-Wort-1 Bit 14 --> 1 = MDI setup active            MdiPosAct       : BOOL:=0;              // EPOS-Wort-1 Bit 15 --> 1 = MDI positing active            ActTrvBit0      : BOOL:=0;              // EPOS-Wort-1 BIT 00 --> 1 = Active traversing block bit 0            ActTrvBit1      : BOOL:=0;              // EPOS-Wort-1 Bit 01 --> 1 = Active traversing block bit 1            ActTrvBit2      : BOOL:=0;              // EPOS-Wort-1 Bit 02 --> 1 = Active traversing block bit 2            ActTrvBit3      : BOOL:=0;              // EPOS-Wort-1 Bit 03 --> 1 = Active traversing block bit 3            ActTrvBit4      : BOOL:=0;              // EPOS-Wort-1 Bit 04 --> 1 = Active traversing block bit 4            ActTrvBit5      : BOOL:=0;              // EPOS-Wort-1 Bit 05 --> 1 = Active traversing block bit 5            Bit06           : BOOL:=0;              // EPOS-Wort-1 Bit 06 --> 1 = Reserve            Bit07           : BOOL:=0;              // EPOS-Wort-1 Bit 07 --> 1 = Reserve         END_STRUCT;
+         EPosZSW2 : Word := WORD#16#0000;   // EPOSZSW2sxEPosZSW2      : STRUCT            PosSmCam1       : BOOL:=0;              // EPOS-Wort-2 Bit 08 --> 1 = Position actual value <= cam position 1            PosSmCam2       : BOOL:=0;              // EPOS-Wort-2 Bit 09 --> 1 = Position actual value <= cam position 2            TrvOut1         : BOOL:=0;              // EPOS-Wort-2 Bit 10 --> 1 = Direct output 1 via traversing block            TrvOut2         : BOOL:=0;              // EPOS-Wort-2 Bit 11 --> 1 = Direct output 2 via traversing block             FxStpRd         : BOOL:=0;              // EPOS-Wort-2 Bit 12 --> 1 = Fixed STOP reached            FxStpTrRd       : BOOL:=0;              // EPOS-Wort-2 Bit 13 --> 1 = Fixed STOP clamping torque reached            TrvFxStpAct     : BOOL:=0;              // EPOS-Wort-2 Bit 14 --> 1 = Traversing fixed STOP active            CmdAct          : BOOL:=0;              // EPOS-Wort-2 Bit 15 --> 1 = Traversing command active            TrkModeAct      : BOOL:=0;              // EPOS-Wort-2 Bit 00 --> 1 = Tracking mode active            VeloLimAct      : BOOL:=0;              // EPOS-Wort-2 Bit 01 --> 1 = Velocity limit active            SetPStat        : BOOL:=0;              // EPOS-Wort-2 Bit 02 --> 1 = Setpoint static            PrnMrkOut       : BOOL:=0;              // EPOS-Wort-2 Bit 03 --> 1 = Printmark outside outer window            FWD             : BOOL:=0;              // EPOS-Wort-2 Bit 04 --> 1 = Axis forwards            BWD             : BOOL:=0;              // EPOS-Wort-2 Bit 05 --> 1 = Axis backwards            SftSwMinAct     : BOOL:=0;              // EPOS-Wort-2 Bit 06 --> 1 = Software limit switch minus active            SftSwPlsAct     : BOOL:=0;              // EPOS-Wort-2 Bit 07 --> 1 = Software limit switch plus active         END_STRUCT;
+         ZSW2 : Word := WORD#16#0000;   // ZSW2sxZSW2     : STRUCT            Bit08           : BOOL:=0;              // ZSW-Wort-2 Bit 08 --> Reserve            GlbTrgReq       : BOOL:=0;              // ZSW-Wort-2 Bit 09 --> Global trigger request            PulsEn          : BOOL:=0;              // ZSW-Wort-2 Bit 10 --> Pulses enabled            MotSwOverAct    : BOOL:=0;              // ZSW-Wort-2 Bit 11 --> Motor switch over activ            SlvZykBit0      : BOOL:=0;              // ZSW-Wort-2 Bit 12 --> Slave - life bit 0            SlvZykBit1      : BOOL:=0;              // ZSW-Wort-2 Bit 13 --> Slave - life bit 1            SlvZykBit2      : BOOL:=0;              // ZSW-Wort-2 Bit 14 --> Slave - life bit 2            SlvZykBit3      : BOOL:=0;              // ZSW-Wort-2 Bit 15 --> Slave - life bit 3            ActDDSBit0      : BOOL:=0;              // ZSW-Wort-2 Bit 00 --> Active drive data set bit 0            ActDDSBit1      : BOOL:=0;              // ZSW-Wort-2 Bit 01 --> Active drive data set bit 1            ActDDSBit2      : BOOL:=0;              // ZSW-Wort-2 Bit 02 --> Active drive data set bit 2            ActDDSBit3      : BOOL:=0;              // ZSW-Wort-2 Bit 03 --> Active drive data set bit 3            ActDDSBit4      : BOOL:=0;              // ZSW-Wort-2 Bit 04 --> Active drive data set bit 4            CmdActRelBrk    : BOOL:=0;              // ZSW-Wort-2 Bit 05 --> Command "release holding break" active            TrqContMode     : BOOL:=0;              // ZSW-Wort-2 Bit 06 --> Torque controlled mode            ParkAxisAct     : BOOL:=0;              // ZSW-Wort-2 Bit 07 --> Parking axis activated            END_STRUCT;
+         NotUsed : Word := WORD#16#0000;   // Reserve
+         Position : DWord := DWORD#16#0000_0000;   // Feedback of position
+         Velocity : DWord := DWORD#16#0000_0000;   // Feedback of velocity
+         ErrNr : Word := WORD#16#0000;   // Fault number
+         WarnNr : Word := WORD#16#0000;   // Warning number
+         Reserve : Word := WORD#16#0000;   // Reserve
+      END_STRUCT;
+   END_VAR
+
+   VAR_TEMP 
+      piRetSFC : Int;   // Status for fault analysis
+      piCount : Int;   // Freely available counter variable 3
+      swSendBuf : Array[0..11] of Word;   // Send buffer
+      swRecvBuf : Array[0..11] of Word;   // Receive buffer
+   END_VAR
+
+
+BEGIN
+	
+	//=============================================================================
+	//SIEMENS AG
+	//(c)Copyright 2019 All Rights Reserved
+	//-----------------------------------------------------------------------------
+	// Library: DriveLib
+	// Tested with: -
+	// Engineering: TIA Portal V15.1
+	// Restrictions: -
+	// Requirements: S7-1200 / S7-1500
+	// Functionality: cyclic communication between a SINAMICS (Basic positioner)and a PLC
+	//                If in HWConfig Std.TLG 111 is projected 12 PZD-words are exchanged
+	//                in every bus cycle.
+	//                The parametrisation of these words is described in the manual of the
+	//                SINAMICS
+	//=============================================================================
+	
+	// Betriebsart ermitteln
+	IF #ModePos > #siModePosMax THEN
+	  
+	  #sbModePos := FALSE;
+	  #Error := True;
+	  #swStatus := 16#8202;
+	ELSIF #ModePos < 1 THEN
+	  
+	  #sbModePos := FALSE;
+	  #Error := True;
+	  #swStatus := 16#8202;
+	ELSE
+	  // Betriebsartenwechsel ist nur möglich, wenn die Achse nicht beschleunigt oder nicht verzögert 
+	  // und die Geschwindigkeit Null ist
+	  IF NOT #sbFWD AND NOT #sbBWD AND NOT #sbAccel AND NOT #sbDecel THEN
+	    
+	    #sbModePos := TRUE;
+	    #siModePos := #ModePos;
+	    
+	    // Fehler wieder zurücknehmen, wenn er mal ausgelöst wurde
+	    IF #swStatus = 16#8202 THEN
+	      #swStatus := 16#7002;
+	      #Error := False;
+	    END_IF;
+	  END_IF;
+	END_IF;
+	
+	// Überprüfung der analogen Eingabewerte, ob sie innerhalb des möglichen Bereiches liegen
+	// Geschwindigkeitsoverride (0% - 199%, 100% => W#16#4000)
+	IF (#OverV < 0) OR (#OverV > 199) THEN
+	  #swStatus := 16#8203;
+	  #Error := True;
+	ELSE
+	  // Geschwindigkeitsoverride in den Sendepuffer eintragen
+	  #sxSendBuf.OverrideV := INT_TO_WORD(REAL_TO_INT(16384.0 * (INT_TO_REAL(#OverV) / 100.0)));
+	END_IF;
+	
+	// Beschleunigungsoverride (0% - 100%, 100% => W#16#4000)
+	IF (#OverAcc < 0) OR (#OverAcc > 100) THEN
+	  #swStatus := 16#8203;
+	  #Error := True;
+	ELSE
+	  // Beschleunigungsoverride in den Sendepuffer eintragen
+	  #sxSendBuf.OverrideA := INT_TO_WORD(REAL_TO_INT(16384.0 * (INT_TO_REAL(#OverAcc) / 100.0)));
+	END_IF;
+	
+	// Verzögerungsoverride (0% - 100%, 100% => W#16#4000)
+	IF (#OverDec < 0) OR (#OverDec > 100) THEN
+	  #swStatus := 16#8203;
+	  #Error := True;
+	ELSE
+	  // Verzögerungsoverride in den Sendepuffer eintragen
+	  #sxSendBuf.OverrideD := INT_TO_WORD(REAL_TO_INT(16384.0 * (INT_TO_REAL(#OverDec) / 100.0)));
+	END_IF;
+	
+	// Fehler wieder zurücknehmen, wenn er mal ausgelöst wurde
+	IF NOT (#OverV < 0) AND NOT (#OverV > 199) AND NOT (#OverAcc < 0) AND NOT (#OverAcc > 100) AND
+	  NOT (#OverDec < 0) AND NOT (#OverDec > 100) THEN
+	  IF #swStatus = 16#8203 THEN
+	    #swStatus := 16#7002;
+	    #Error := False;
+	  END_IF;
+	END_IF;
+	
+	// Positionssollwert
+	// Positionssollwert in den Sendepuffer eintragen
+	#sxSendBuf.Position := DINT_TO_DWORD(#Position);
+	
+	// Geschwindigkeitssollwert (Begrenzung / Überwachung
+	// Geschwindigkeitssollwert in den Sendepuffer eintragen
+	#sxSendBuf.Velocity := DINT_TO_DWORD(#Velocity);
+	
+	// Einschalten bzw. Ausschalten des Antriebes erkennen
+	IF #EnableAxis AND NOT #sbOff1Edge AND NOT #sbBusy AND #sbModePos THEN
+	  #sbOff1 := True;
+	END_IF;
+	// Einschalten bzw. Ausschalten des Antriebes Flanke merken
+	#sbOff1Edge := #EnableAxis AND NOT #sbBusy;
+	
+	// Einschaltflankenmerker wieder zurücksetzen
+	IF NOT #EnableAxis THEN
+	  #sbOff1 := False;
+	END_IF;
+	
+	// Fliegendes Referenzieren aktivieren erkennen
+	IF #FlyRef AND NOT #sbRefTypEdge THEN
+	  #sbRefTyp := True;
+	END_IF;
+	// Fliegendes Referenzieren aktivieren Flanke merken
+	#sbRefTypEdge := #FlyRef;
+	
+	// Fliegendes Referenzieren Flankenmerker wieder zurücksetzen
+	IF NOT #FlyRef THEN
+	  #sbRefTyp := False;
+	  #siRefTypCyc := 0;
+	END_IF;
+	
+	// Betriebsart aktivieren erkennen (RQ 3901129, RQ 4094299)
+	IF #ExecuteMode AND NOT #sbExecuteEdge THEN
+	  #sbExecute := True;
+	  #siExecuteCyc := 0;
+	ELSIF #ActMode <> #ModePos THEN
+	  #sbExecute := FALSE;
+	ELSIF #siExecuteCyc > (2 * #siCycWait) THEN
+	  IF #ModePos <> 4 THEN
+	    #sbExecute := FALSE;
+	  ELSE
+	    IF #sxRecvBuf.ZSW1.%X11 OR NOT #ExecuteMode THEN
+	      #sbExecute := FALSE;
+	    END_IF;
+	  END_IF;
+	ELSE
+	  ; // not used
+	END_IF;
+	
+	IF #siExecuteCyc > 100 THEN
+	  #siExecuteCyc := 0;
+	ELSE
+	  #siExecuteCyc := #siExecuteCyc + 1;
+	END_IF;
+	
+	// Verfahrauftrag aktivieren Flanke merken
+	#sbExecuteEdge := #ExecuteMode;
+	
+	// Betriebsart MDI / Sollwertdirektvorgabe Flanke merken
+	(*IF #sxSendBuf.sxEPosSTW1.MdiStart AND NOT #sbMdiStartEdge THEN
+	          #sbMdiStart := True;
+	      END_IF;
+	      // Betriebsart MDI / Sollwertdirektvorgabe Flanke merken
+	      #sbMdiStartEdge := #sxSendBuf.sxEPosSTW1.MdiStart AND NOT #Busy;*)
+	
+	// Verfahrauftragflankenmerker wieder zurücksetzen
+	(*IF NOT #sxSendBuf.sxEPosSTW1.MdiStart THEN
+	          #sbMdiStart := False;
+	          #siMdiStartCyc := 0;
+	      END_IF;*)
+	
+	IF #sxSendBuf.EPosSTW1.%X15 AND NOT #sbMdiStartEdge THEN
+	  #sbMdiStart := True;
+	END_IF;
+	// Betriebsart MDI / Sollwertdirektvorgabe Flanke merken
+	#sbMdiStartEdge := #sxSendBuf.EPosSTW1.%X15 AND NOT #sbBusy;
+	
+	// Verfahrauftragflankenmerker wieder zurücksetzen
+	IF NOT #sxSendBuf.EPosSTW1.%X15 THEN
+	  #sbMdiStart := False;
+	  #siMdiStartCyc := 0;
+	END_IF;
+	
+	// Schreibdaten zusammenstellen
+	// Steuerword STW1 für alle Betriebsart aufbereiten
+	(*#sxSendBuf.sxSTW1.RejTrvTsk        := #RejTrvTsk;
+	      #sxSendBuf.sxSTW1.IntMStop         := #IntMStop;
+	      #sxSendBuf.sxSTW1.AckFault         := #AckFlt;*)
+	
+	#sxSendBuf.STW1.%X4 := #CancelTraversing;
+	#sxSendBuf.STW1.%X5 := #IntermediateStop;
+	#sxSendBuf.STW1.%X7 := #AckError;
+	#sxSendBuf.STW1.%X1 := TRUE;
+	#sxSendBuf.STW1.%X2 := TRUE;
+	#sxSendBuf.STW1.%X3 := TRUE;
+	#sxSendBuf.STW1.%X10 := TRUE;
+	
+	// Hauptbetriebsart "Positionieren / manueller Sollwertvorgabe (MDI)" 
+	// Betriebsart "Positionieren Relativ positiv" oder "Positionieren Relativ negativ"
+	IF (#siModePos = 1 AND #sbModePos) THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.Off1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxSTW1.Jog1          := False;
+	          #sxSendBuf.sxSTW1.Jog2          := False;
+	          #sxSendBuf.sxEPosSTW1.MdiTyp    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiPos    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiNeg    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiSetup  := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt  := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc    := False;
+	          #sxSendBuf.sxEPosSTW2.RefStDi   := False;
+	          #sxSendBuf.sxSTW1.RefStart      := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiStart  := False;*)
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X10 := False;
+	  #sxSendBuf.EPosSTW1.%X14 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.EPosSTW2.%X9 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  
+	  
+	  // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	  // dann die Betriebsart MDI / Sollwertvorgabe Start gesetzt werden
+	  IF #sbOff1 AND #sbReady AND #sbIOp AND NOT #sbFault THEN
+	    
+	    // Betriebsart MDI / Sollwertdirektvorgabe setzen
+	    //#sxSendBuf.sxEPosSTW1.MdiStart := True;
+	    #sxSendBuf.EPosSTW1.%X15 := True;
+	    
+	    // Positioniertyp auf relatives Positionieren stellen 
+	    //#sxSendBuf.sxEPosSTW1.MdiTyp := False;
+	    #sxSendBuf.EPosSTW1.%X8 := False;
+	    
+	    // die Richtungswahl für das Positionieren auf positive Richtung oder negative Richtung einstellen
+	    IF #Positive AND NOT #Negative THEN
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := True;
+	      #sxSendBuf.EPosSTW1.%X9 := True;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := False;
+	      #sxSendBuf.EPosSTW1.%X10 := False;
+	      
+	      // die Richtungswahl für das Positionieren auf negative Richtung einstellen                
+	    ELSIF NOT #Positive AND #Negative THEN
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := False;
+	      #sxSendBuf.EPosSTW1.%X9 := False;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := True;
+	      #sxSendBuf.EPosSTW1.%X10 := True;
+	      
+	      // die Richtungswahl für das Positionieren auf keine Richtung einstellen                
+	    ELSE
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := False;
+	      #sxSendBuf.EPosSTW1.%X9 := False;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := False;
+	      #sxSendBuf.EPosSTW1.%X10 := False;
+	      
+	    END_IF;
+	    
+	    // Nach dem Einschalten des Antriebes und dem Betriebsart MDI / Sollwertvorgabe starten, 
+	    // ein Paar Zyklen warten bevor die Flanke für die Sollwertübernahme MDI gesetzt werden kann
+	    IF #sbMdiStart AND (#siMdiStartCyc < #siCycWait) THEN
+	      #siMdiStartCyc := #siMdiStartCyc + 1;
+	    ELSE
+	      // Flanke Sollwertübernahme MDI
+	      //#sxSendBuf.sxSTW1.TrvStart := #Execute;
+	      #sxSendBuf.STW1.%X6 := #sbExecute;
+	      
+	    END_IF;
+	    
+	    // "Fliegendes Referentieren" aktivieren
+	    // "Fliegendes Referenzieren" erst nach Einschalten des Antriebes möglich
+	    IF #sbRefTyp THEN
+	      
+	      // Referenziertyp auf "Fliegendes Referenzieren" einstellen
+	      //#sxSendBuf.sxEPosSTW2.RefTyp := True;
+	      #sxSendBuf.EPosSTW2.%X8 := True;
+	      
+	      // Nach der Anwahl des Referenziertyps "Fliegendes Referenzieren", 
+	      // ein Zyklus später kann das Referenzieren gestartet
+	      IF (#siRefTypCyc = 0) THEN
+	        #siRefTypCyc := #siRefTypCyc + 1;
+	      ELSE
+	        // Referenzieren starten
+	        //#sxSendBuf.sxSTW1.RefStart := True;
+	        #sxSendBuf.STW1.%X11 := True;
+	        
+	      END_IF;
+	    END_IF;
+	  END_IF;
+	  
+	  // Betriebsart "Positionieren Absolut" oder "Positonieren Absolut positiv" oder "Positionieren Absolut negativ"
+	ELSIF #siModePos = 2 AND #sbModePos THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.Off1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxSTW1.Jog1         := False;
+	          #sxSendBuf.sxSTW1.Jog2         := False;
+	          #sxSendBuf.sxEPosSTW1.MdiTyp   := False;
+	          #sxSendBuf.sxEPosSTW1.MdiPos   := False;
+	          #sxSendBuf.sxEPosSTW1.MdiNeg   := False;
+	          #sxSendBuf.sxEPosSTW1.MdiSetup := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc   := False;
+	          #sxSendBuf.sxEPosSTW2.RefStDi  := False;
+	          #sxSendBuf.sxSTW1.RefStart     := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp   := False;
+	          #sxSendBuf.sxEPosSTW1.MdiStart := False;*)
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X10 := False;
+	  #sxSendBuf.EPosSTW1.%X14 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.EPosSTW2.%X9 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  
+	  // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	  // dann die Betriebsart MDI / Sollwertvorgabe Start gesetzt werden
+	  IF #sbOff1 AND #sbReady AND #sbIOp AND NOT #sbFault THEN
+	    
+	    // Betriebsart MDI / Sollwertdirektvorgabe setzen
+	    //#sxSendBuf.sxEPosSTW1.MdiStart := True;
+	    #sxSendBuf.EPosSTW1.%X15 := True;
+	    
+	    // Positioniertyp auf absolutes Positionieren stellen 
+	    //#sxSendBuf.sxEPosSTW1.MdiTyp := True;
+	    #sxSendBuf.EPosSTW1.%X8 := True;
+	    
+	    // die Richtungswahl für das Positionieren auf positive Richtung oder negative Richtung einstellen
+	    IF #Positive AND NOT #Negative THEN
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := True;
+	      #sxSendBuf.EPosSTW1.%X9 := True;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := False;
+	      #sxSendBuf.EPosSTW1.%X10 := False;
+	      
+	      // die Richtungswahl für das Positionieren auf negative Richtung einstellen                
+	    ELSIF NOT #Positive AND #Negative THEN
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := False;
+	      #sxSendBuf.EPosSTW1.%X9 := False;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := True;
+	      #sxSendBuf.EPosSTW1.%X10 := True;
+	      
+	      // die Richtungswahl für das Positionieren auf keine Richtung einstellen                
+	    ELSE
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := False;
+	      #sxSendBuf.EPosSTW1.%X9 := False;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := False;
+	      #sxSendBuf.EPosSTW1.%X10 := False;
+	      
+	    END_IF;
+	    
+	    // Nach dem Einschalten des Antriebes und dem Betriebsart MDI / Sollwertvorgabe starten, 
+	    // ein Paar Zyklen warten bevor die Flanke für die Sollwertübernahme MDI gesetzt werden kann
+	    IF #sbMdiStart AND (#siMdiStartCyc < #siCycWait) THEN
+	      #siMdiStartCyc := #siMdiStartCyc + 1;
+	    ELSE
+	      // Flanke Sollwertübernahme MDI
+	      //#sxSendBuf.sxSTW1.TrvStart := #Execute;
+	      #sxSendBuf.STW1.%X6 := #sbExecute;
+	      
+	    END_IF;
+	    
+	    // "Fliegendes Referentieren" aktivieren
+	    // "Fliegendes Referenzieren" erst nach Einschalten des Antriebes möglich
+	    IF #sbRefTyp THEN
+	      
+	      // Referenziertyp auf "Fliegendes Referenzieren" einstellen
+	      //#sxSendBuf.sxEPosSTW2.RefTyp := True;
+	      #sxSendBuf.EPosSTW2.%X8 := True;
+	      
+	      // Nach der Anwahl des Referenziertyps "Fliegendes Referenzieren", 
+	      // ein Zyklus später kann das Referenzieren gestartet
+	      IF (#siRefTypCyc = 0) THEN
+	        #siRefTypCyc := #siRefTypCyc + 1;
+	      ELSE
+	        // Referenzieren starten
+	        //#sxSendBuf.sxSTW1.RefStart := True;
+	        #sxSendBuf.STW1.%X11 := True;
+	        
+	      END_IF;
+	    END_IF;
+	  END_IF;
+	  
+	  // Betriebsart "Positionieren als Einrichten positiv" oder "Positionieren als Einrichten negativ"
+	ELSIF #siModePos = 3 AND #sbModePos THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.Off1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxSTW1.Jog1           := False;
+	          #sxSendBuf.sxSTW1.Jog2           := False;
+	          #sxSendBuf.sxEPosSTW1.MdiTyp     := False;
+	          #sxSendBuf.sxEPosSTW1.MdiPos     := False;
+	          #sxSendBuf.sxEPosSTW1.MdiNeg     := False;
+	          #sxSendBuf.sxEPosSTW1.MdiSetup   := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt   := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc     := False;
+	          #sxSendBuf.sxEPosSTW2.RefStDi    := False;
+	          #sxSendBuf.sxSTW1.RefStart       := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp     := False;
+	          #sxSendBuf.sxEPosSTW1.MdiStart   := False;*)
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X10 := False;
+	  #sxSendBuf.EPosSTW1.%X14 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.EPosSTW2.%X9 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  
+	  // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	  // dann die Betriebsart MDI / Sollwertvorgabe Start gesetzt werden
+	  IF #sbOff1 AND #sbReady AND #sbIOp AND NOT #sbFault THEN
+	    
+	    // Betriebsart MDI / Sollwertdirektvorgabe setzen
+	    //#sxSendBuf.sxEPosSTW1.MdiStart := True;
+	    #sxSendBuf.EPosSTW1.%X15 := True;
+	    
+	    // Positioniertyp auf absolutes Positionieren stellen 
+	    //#sxSendBuf.sxEPosSTW1.MdiTyp := True;
+	    #sxSendBuf.EPosSTW1.%X8 := True;
+	    
+	    // die Anwahl für MDI Modus auf Einrichten einstellen
+	    //#sxSendBuf.sxEPosSTW1.MdiSetup := True;
+	    #sxSendBuf.EPosSTW1.%X14 := True;
+	    
+	    // die Richtungswahl für das Positionieren auf positive Richtung oder negative Richtung einstellen
+	    IF #Positive AND NOT #Negative THEN
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := True;
+	      #sxSendBuf.EPosSTW1.%X9 := True;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := False;
+	      #sxSendBuf.EPosSTW1.%X10 := False;
+	      
+	      // die Richtungswahl für das Positionieren auf negative Richtung einstellen                
+	    ELSIF NOT #Positive AND #Negative THEN
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := False;
+	      #sxSendBuf.EPosSTW1.%X9 := False;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := True;
+	      #sxSendBuf.EPosSTW1.%X10 := True;
+	      
+	      // die Richtungswahl für das Positionieren auf keine Richtung einstellen                
+	    ELSE
+	      
+	      // positive Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiPos := False;
+	      #sxSendBuf.EPosSTW1.%X9 := False;
+	      
+	      // negative Richtung
+	      //#sxSendBuf.sxEPosSTW1.MdiNeg := False;
+	      #sxSendBuf.EPosSTW1.%X10 := False;
+	      
+	    END_IF;
+	    
+	    // Nach dem Einschalten des Antriebes und dem Betriebsart MDI / Sollwertvorgabe starten, 
+	    // ein Paar Zyklen warten bevor die Flanke für die Sollwertübernahme MDI gesetzt werden kann
+	    IF #sbMdiStart AND (#siMdiStartCyc < #siCycWait) THEN
+	      #siMdiStartCyc := #siMdiStartCyc + 1;
+	    ELSE
+	      // Flanke Sollwertübernahme MDI
+	      //#sxSendBuf.sxSTW1.TrvStart := #Execute;
+	      #sxSendBuf.STW1.%X6 := #sbExecute;
+	      
+	    END_IF;
+	    
+	    // "Fliegendes Referentieren" aktivieren
+	    // "Fliegendes Referenzieren" erst nach Einschalten des Antriebes möglich
+	    IF #sbRefTyp THEN
+	      
+	      // Referenziertyp auf "Fliegendes Referenzieren" einstellen
+	      //#sxSendBuf.sxEPosSTW2.RefTyp := True;
+	      #sxSendBuf.EPosSTW2.%X8 := True;
+	      
+	      // Nach der Anwahl des Referenziertyps "Fliegendes Referenzieren", 
+	      // ein Zyklus später kann das Referenzieren gestartet
+	      IF (#siRefTypCyc = 0) THEN
+	        #siRefTypCyc := #siRefTypCyc + 1;
+	      ELSE
+	        // Referenzieren starten
+	        //#sxSendBuf.sxSTW1.RefStart := True;
+	        #sxSendBuf.STW1.%X11 := True;
+	        
+	      END_IF;
+	    END_IF;
+	  END_IF;
+	  
+	  // Hauptbetriebsart "Referenzieren" (Reference)
+	  // Betriebsart "Referenzieren - Referenzpunktfahrt positiv" oder "Referenzieren - Referenzpunktfahrt negativ"
+	ELSIF #siModePos = 4 AND #sbModePos THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.Off1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxSTW1.Jog1         := False;
+	          #sxSendBuf.sxSTW1.Jog2         := False;
+	          #sxSendBuf.sxEPosSTW1.MdiStart := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc   := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp   := False;
+	          #sxSendBuf.sxSTW1.RefStart     := False;
+	          #sxSendBuf.sxEPosSTW2.RefStDi  := False;*)
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW2.%X9 := False;
+	  
+	  // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	  // dann die Betriebsart MDI / Sollwertvorgabe Start gesetzt werden
+	  IF #sbOff1 AND #sbReady AND #sbIOp AND NOT #sbFault THEN
+	    
+	    // Referenzieren starten
+	    //#sxSendBuf.sxSTW1.RefStart := #Execute;
+	    #sxSendBuf.STW1.%X11 := #sbExecute;
+	    
+	    // die Richtungswahl für das Referenzpunktfahrt positiv einstellen
+	    IF #Positive AND NOT #Negative THEN
+	      
+	      // positive Referenzpunktfahrt
+	      //#sxSendBuf.sxEPosSTW2.RefStDi := False;
+	      #sxSendBuf.EPosSTW2.%X9 := False;
+	      
+	      // die Richtungswahl für das Referenzpunktfahrt negativ einstellen                
+	    ELSIF NOT #Positive AND #Negative THEN
+	      
+	      // negative Referenzpunktfahrt
+	      //#sxSendBuf.sxEPosSTW2.RefStDi := True;
+	      #sxSendBuf.EPosSTW2.%X9 := True;
+	      
+	    END_IF;
+	  END_IF;
+	  
+	  // Betriebsart "Referenzieren - Referenzpunkt setzen"
+	ELSIF #siModePos = 5 AND #sbModePos THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.Off1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxSTW1.Jog1          := False;
+	          #sxSendBuf.sxSTW1.Jog2          := False;
+	          #sxSendBuf.sxSTW1.RefStart      := False;
+	          #sxSendBuf.sxEPosSTW1.MdiStart  := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc    := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp    := False;
+	          #sxSendBuf.sxEPosSTW2.RefStDi   := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt  := False;*)
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.EPosSTW2.%X9 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  
+	  // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	  // dann die Betriebsart MDI / Sollwertvorgabe Start gesetzt werden
+	  IF NOT #sbFault THEN
+	    
+	    // Referenzpunktfahrt negativ
+	    //#sxSendBuf.sxEPosSTW2.SetRefPt := #Execute;
+	    #sxSendBuf.EPosSTW2.%X1 := #sbExecute;
+	    
+	  END_IF;
+	  
+	  // Hauptbetriebsart "Verfahrsätze" (Traversing Blocks)
+	ELSIF #siModePos = 6 AND #sbModePos THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.Off1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxSTW1.Jog1          := False;
+	          #sxSendBuf.sxSTW1.Jog2          := False;
+	          #sxSendBuf.sxEPosSTW1.MdiTyp    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiPos    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiNeg    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiSetup  := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt  := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc    := False;
+	          #sxSendBuf.sxEPosSTW2.RefStDi   := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp    := False;
+	          #sxSendBuf.sxSTW1.RefStart      := False;
+	          #sxSendBuf.sxEPosSTW1.TrvBit0   := False;
+	          #sxSendBuf.sxEPosSTW1.TrvBit1   := False;
+	          #sxSendBuf.sxEPosSTW1.TrvBit2   := False;
+	          #sxSendBuf.sxEPosSTW1.TrvBit3   := False;
+	          #sxSendBuf.sxEPosSTW1.TrvBit4   := False;
+	          #sxSendBuf.sxEPosSTW1.TrvBit5   := False;
+	          #sxSendBuf.sxEPosSTW1.MdiStart  := False;*)
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X10 := False;
+	  #sxSendBuf.EPosSTW1.%X14 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.EPosSTW2.%X9 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW1.%X0 := False;
+	  #sxSendBuf.EPosSTW1.%X1 := False;
+	  #sxSendBuf.EPosSTW1.%X2 := False;
+	  #sxSendBuf.EPosSTW1.%X3 := False;
+	  #sxSendBuf.EPosSTW1.%X4 := False;
+	  #sxSendBuf.EPosSTW1.%X5 := False;
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  
+	  // Bei der Auswahl der Verfahrsätze entspricht die Position der Verfahrensatznummer 
+	  // Verfahrsatznummer aus der Position ermitteln und in die einzelnen Bit's aufteilen
+	  // Es sind die Verfahrsatznummern 0 - 63 möglich
+	  IF (DINT_TO_INT(#Position) < 0) OR (DINT_TO_INT(#Position) > 63) THEN
+	    // Fehler, ungültiger Verfahrsatznummer
+	    #swStatus := 16#8204;
+	    #Error := True;
+	  ELSE
+	    // Fehler wieder zurücknehmen, wenn er mal ausgelöst wurde
+	    IF #swStatus = 16#8204 THEN
+	      #swStatus := 16#7002;
+	      #Error := False;
+	    END_IF;
+	    
+	    // Verfahrsatznummer Bit 0 ermitteln
+	    IF (DINT_TO_WORD(#Position) AND W#16#01) = W#16#01 THEN
+	      //#sxSendBuf.sxEPosSTW1.TrvBit0 := True;
+	      #sxSendBuf.EPosSTW1.%X0 := True;
+	    END_IF;
+	    
+	    // Verfahrsatznummer Bit 1 ermitteln
+	    IF (DINT_TO_WORD(#Position) AND W#16#02) = W#16#02 THEN
+	      //#sxSendBuf.sxEPosSTW1.TrvBit1 := True;
+	      #sxSendBuf.EPosSTW1.%X1 := True;
+	    END_IF;
+	    
+	    // Verfahrsatznummer Bit 2 ermitteln
+	    IF (DINT_TO_WORD(#Position) AND W#16#04) = W#16#04 THEN
+	      //#sxSendBuf.sxEPosSTW1.TrvBit2 := True;
+	      #sxSendBuf.EPosSTW1.%X2 := True;
+	    END_IF;
+	    
+	    // Verfahrsatznummer Bit 3 ermitteln
+	    IF (DINT_TO_WORD(#Position) AND W#16#08) = W#16#08 THEN
+	      //#sxSendBuf.sxEPosSTW1.TrvBit3 := True;
+	      #sxSendBuf.EPosSTW1.%X3 := True;
+	    END_IF;
+	    
+	    // Verfahrsatznummer Bit 4 ermitteln
+	    IF (DINT_TO_WORD(#Position) AND W#16#10) = W#16#10 THEN
+	      //#sxSendBuf.sxEPosSTW1.TrvBit4 := True;
+	      #sxSendBuf.EPosSTW1.%X4 := True;
+	    END_IF;
+	    
+	    // Verfahrsatznummer Bit 5 ermitteln
+	    IF (DINT_TO_WORD(#Position) AND W#16#20) = W#16#20 THEN
+	      //#sxSendBuf.sxEPosSTW1.TrvBit5 := True;
+	      #sxSendBuf.EPosSTW1.%X5 := True;
+	    END_IF;
+	    
+	    // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	    // dann die Betriebsart MDI / Sollwertvorgabe Start gesetzt werden
+	    IF #sbOff1 AND #sbReady AND #sbIOp AND NOT #sbFault THEN
+	      
+	      #sxSendBuf.STW1.%X6 := #sbExecute;
+	      
+	      // "Fliegendes Referentieren" aktivieren
+	      // "Fliegendes Referenzieren" erst nach Einschalten des Antriebes möglich
+	      IF #sbRefTyp THEN
+	        
+	        // Referenziertyp auf "Fliegendes Referenzieren" einstellen
+	        //#sxSendBuf.sxEPosSTW2.RefTyp := True;
+	        #sxSendBuf.EPosSTW2.%X8 := True;
+	        
+	        // Nach der Anwahl des Referenziertyps "Fliegendes Referenzieren", 
+	        // ein Zyklus später kann das Referenzieren gestartet
+	        IF (#siRefTypCyc = 0) THEN
+	          #siRefTypCyc := #siRefTypCyc + 1;
+	        ELSE
+	          // Referenzieren starten
+	          //#sxSendBuf.sxSTW1.RefStart := True;
+	          #sxSendBuf.STW1.%X11 := True;
+	        END_IF;
+	      END_IF;
+	    END_IF;
+	  END_IF;
+	  
+	  // Hauptbetriebsart "Tippen" (Jogging)
+	  // Betriebsart "Tippen positiv" oder "Tippen negativ" angewählt 
+	ELSIF #siModePos = 7 AND #sbModePos THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.Off1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxEPosSTW1.MdiStart := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc   := False;
+	          #sxSendBuf.sxSTW1.Jog1         := False;
+	          #sxSendBuf.sxSTW1.Jog2         := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp   := False;
+	          #sxSendBuf.sxSTW1.RefStart     := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt  := False;*)
+	  
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  
+	  // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	  // dann kann Tippen positiv oder negativ gesetzt werden
+	  IF #sbOff1 AND #sbReady AND #sbIOp AND NOT #sbFault THEN
+	    
+	    // Tippen positiv
+	    IF #Jog1 AND NOT #Jog2 THEN
+	      //#sxSendBuf.sxSTW1.Jog1 := True;
+	      #sxSendBuf.STW1.%X8 := True;
+	    END_IF;
+	    
+	    // Tippen negativ
+	    IF #Jog2 AND NOT #Jog1 THEN
+	      //#sxSendBuf.sxSTW1.Jog2 := True;
+	      #sxSendBuf.STW1.%X9 := True;
+	    END_IF;
+	    
+	    // "Fliegendes Referentieren" aktivieren
+	    // "Fliegendes Referenzieren" erst nach Einschalten des Antriebes möglich
+	    IF #sbRefTyp THEN
+	      
+	      // Referenziertyp auf "Fliegendes Referenzieren" einstellen
+	      //#sxSendBuf.sxEPosSTW2.RefTyp := #FlyRef;
+	      #sxSendBuf.EPosSTW2.%X8 := #FlyRef;
+	      
+	      // Nach der Anwahl des Referenziertyps "Fliegendes Referenzieren", 
+	      // ein Zyklus später kann das Referenzieren gestartet
+	      IF (#siRefTypCyc = 0) THEN
+	        #siRefTypCyc := #siRefTypCyc + 1;
+	      ELSE
+	        // Referenzieren starten
+	        //#sxSendBuf.sxSTW1.RefStart := True;
+	        #sxSendBuf.STW1.%X11 := True;
+	      END_IF;
+	    END_IF;
+	  END_IF;
+	  
+	  // Betriebsart "Tippen positiv / Tippen negativ inkrementell" 
+	ELSIF #siModePos = 8 AND #sbModePos THEN
+	  
+	  // Antrieb einschalten
+	  //#sxSendBuf.sxSTW1.OFF1 := #sbOff1;
+	  #sxSendBuf.STW1.%X0 := #sbOff1;
+	  
+	  // nicht verwendete Signale für den 1. Schritt und eventuell weitere Schritte
+	  (*#sxSendBuf.sxEPosSTW1.MdiStart := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc   := False;
+	          #sxSendBuf.sxSTW1.Jog1         := False;
+	          #sxSendBuf.sxSTW1.Jog2         := False;
+	          #sxSendBuf.sxSTW1.RefStart     := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp   := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt  := False;*)
+	  
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  
+	  // Nach dem Einschalten des Antriebes, ein Paar Zyklen warten bevor Tippen negativ gesetzt werden kann
+	  // Nach dem Einschalten des Antriebes, prüfen ob der Antrieb betriebsbereit, in Operation ohne Fehler und Warnung ist, 
+	  // dann kann Tippen positiv oder negativ gesetzt werden
+	  IF #sbOff1 AND #sbReady AND #sbIOp AND NOT #sbFault THEN
+	    
+	    // Tippen inkrementell einstellen
+	    //#sxSendBuf.sxEPosSTW2.JogInc := True;
+	    #sxSendBuf.EPosSTW2.%X5 := True;
+	    
+	    #sbJogInc := True;
+	    
+	    // Nach dem Einstellen des Antriebes, ein Paar Zyklen warten bevor Tippen negativ oder Tippen positiv gesetz werden kann
+	    IF #sbJogInc AND (#siJogIncCyc = 0) THEN
+	      #siJogIncCyc := #siJogIncCyc + 1;
+	    ELSE
+	      
+	      // Tippen positiv oder negativ inkrementell zulassen
+	      IF #Jog1 XOR #Jog2 THEN
+	        
+	        //#sxSendBuf.sxSTW1.Jog1 := #Jog1;
+	        //#sxSendBuf.sxSTW1.Jog2 := #Jog2;
+	        #sxSendBuf.STW1.%X8 := #Jog1;
+	        #sxSendBuf.STW1.%X9 := #Jog2;
+	      END_IF;
+	    END_IF;
+	    
+	    // "Fliegendes Referentieren" aktivieren
+	    // "Fliegendes Referenzieren" erst nach Einschalten des Antriebes möglich
+	    IF #sbRefTyp THEN
+	      
+	      // Referenziertyp auf "Fliegendes Referenzieren" einstellen
+	      //#sxSendBuf.sxEPosSTW2.RefTyp := True;
+	      #sxSendBuf.EPosSTW2.%X8 := True;
+	      
+	      // Nach der Anwahl des Referenziertyps "Fliegendes Referenzieren", 
+	      // ein Zyklus später kann das Referenzieren gestartet
+	      IF (#siRefTypCyc = 0) THEN
+	        #siRefTypCyc := #siRefTypCyc + 1;
+	      ELSE
+	        // Referenzieren starten
+	        //#sxSendBuf.sxSTW1.RefStart := True;
+	        #sxSendBuf.STW1.%X11 := True;
+	      END_IF;
+	    END_IF;
+	  END_IF;
+	ELSE
+	  // Werte wieder zurücknehmen
+	  (*#sxSendBuf.sxSTW1.Off1          := #Off1;
+	          #sxSendBuf.sxSTW1.RejTrvTsk     := False;
+	          #sxSendBuf.sxSTW1.TrvStart      := False;
+	          #sxSendBuf.sxEPosSTW1.MdiStart  := False;
+	          #sxSendBuf.sxSTW1.Jog1          := False;
+	          #sxSendBuf.sxSTW1.Jog2          := False;
+	          #sxSendBuf.sxEPosSTW1.MdiTyp    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiPos    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiNeg    := False;
+	          #sxSendBuf.sxEPosSTW1.MdiTrTyp  := False;
+	          #sxSendBuf.sxEPosSTW1.MdiSetup  := False;
+	          #sxSendBuf.sxEPosSTW2.SetRefPt  := False;
+	          #sxSendBuf.sxEPosSTW2.RefTyp    := False;
+	          #sxSendBuf.sxEPosSTW2.RefStDi   := False;
+	          #sxSendBuf.sxEPosSTW2.JogInc    := False;
+	          #sxSendBuf.sxSTW1.RefStart      := False;*)
+	  
+	  #sxSendBuf.STW1.%X0 := #EnableAxis;
+	  #sxSendBuf.STW1.%X4 := False;
+	  #sxSendBuf.STW1.%X6 := False;
+	  #sxSendBuf.EPosSTW1.%X15 := False;
+	  #sxSendBuf.STW1.%X8 := False;
+	  #sxSendBuf.STW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X8 := False;
+	  #sxSendBuf.EPosSTW1.%X9 := False;
+	  #sxSendBuf.EPosSTW1.%X10 := False;
+	  #sxSendBuf.EPosSTW1.%X12 := False;
+	  #sxSendBuf.EPosSTW1.%X14 := False;
+	  #sxSendBuf.EPosSTW2.%X1 := False;
+	  #sxSendBuf.EPosSTW2.%X8 := False;
+	  #sxSendBuf.EPosSTW2.%X9 := False;
+	  #sxSendBuf.EPosSTW2.%X5 := False;
+	  #sxSendBuf.STW1.%X11 := False;
+	END_IF; // Hauptbetriebsart "Verfahrsätze" (Traversing Blocks)
+	
+	//Den Eingang ConfigEPos auf die einzelnen Bits im Telegramm verschalten
+	#sxSendBuf.STW1.%X1 := #ConfigEPos.%X0;
+	#sxSendBuf.STW1.%X2 := #ConfigEPos.%X1;
+	#sxSendBuf.EPosSTW2.%X14 := #ConfigEPos.%X2;
+	#sxSendBuf.EPosSTW2.%X15 := #ConfigEPos.%X3;
+	#sxSendBuf.EPosSTW2.%X11 := #ConfigEPos.%X4;
+	#sxSendBuf.EPosSTW2.%X10 := #ConfigEPos.%X5;
+	#sxSendBuf.EPosSTW2.%X2 := #ConfigEPos.%X6;
+	#sxSendBuf.STW1.%X13 := #ConfigEPos.%X7;
+	#sxSendBuf.EPosSTW1.%X12 := #ConfigEPos.%X8;
+	#sxSendBuf.STW2.%X0 := #ConfigEPos.%X9;
+	#sxSendBuf.STW2.%X1 := #ConfigEPos.%X10;
+	#sxSendBuf.STW2.%X2 := #ConfigEPos.%X11;
+	#sxSendBuf.STW2.%X3 := #ConfigEPos.%X12;
+	#sxSendBuf.STW2.%X4 := #ConfigEPos.%X13;
+	#sxSendBuf.STW2.%X7 := #ConfigEPos.%X14;
+	#sxSendBuf.STW1.%X12 := #ConfigEPos.%X15;
+	#sxSendBuf.STW1.%X14 := #ConfigEPos.%X16;
+	#sxSendBuf.STW1.%X15 := #ConfigEPos.%X17;
+	#sxSendBuf.EPosSTW1.%X6 := #ConfigEPos.%X18;
+	#sxSendBuf.EPosSTW1.%X7 := #ConfigEPos.%X19;
+	#sxSendBuf.EPosSTW1.%X11 := #ConfigEPos.%X20;
+	#sxSendBuf.EPosSTW1.%X13 := #ConfigEPos.%X21;
+	#sxSendBuf.EPosSTW2.%X3 := #ConfigEPos.%X22;
+	#sxSendBuf.EPosSTW2.%X4 := #ConfigEPos.%X23;
+	#sxSendBuf.EPosSTW2.%X6 := #ConfigEPos.%X24;
+	#sxSendBuf.EPosSTW2.%X7 := #ConfigEPos.%X25;
+	#sxSendBuf.EPosSTW2.%X12 := #ConfigEPos.%X26;
+	#sxSendBuf.EPosSTW2.%X13 := #ConfigEPos.%X27;
+	#sxSendBuf.STW2.%X5 := #ConfigEPos.%X28;
+	#sxSendBuf.STW2.%X6 := #ConfigEPos.%X29;
+	#sxSendBuf.STW2.%X8 := #ConfigEPos.%X30;
+	#sxSendBuf.STW2.%X9 := #ConfigEPos.%X31;
+	
+	
+	#swSendBuf[0] := #sxSendBuf.STW1;
+	#swSendBuf[1] := #sxSendBuf.EPosSTW1;
+	#swSendBuf[2] := #sxSendBuf.EPosSTW2;
+	#swSendBuf[3] := #sxSendBuf.STW2;
+	#swSendBuf[4] := #sxSendBuf.OverrideV;
+	#swSendBuf[5] := #sxSendBuf.Position.%W1;
+	#swSendBuf[6] := #sxSendBuf.Position.%W0;
+	#swSendBuf[7] := #sxSendBuf.Velocity.%W1;
+	#swSendBuf[8] := #sxSendBuf.Velocity.%W0;
+	#swSendBuf[9] := #sxSendBuf.OverrideA;
+	#swSendBuf[10] := #sxSendBuf.OverrideD;
+	#swSendBuf[11] := #sxSendBuf.Reserve;
+	
+	//Prozessdaten zur Signalbaugruppe schreiben
+	#piRetSFC := DPWR_DAT(LADDR := #HWIDSTW,
+	                      RECORD := #swSendBuf);
+	
+	// Fehler der Rückmeldung ausgeben
+	#DiagID := INT_TO_WORD(#piRetSFC);
+	
+	//kein Fehler beim Schreiben
+	IF #piRetSFC = 0 THEN
+	  
+	  // Fehler wieder zurück nehmen
+	  IF (#swStatus = 16#8601) THEN
+	    #swStatus := 16#7002;
+	    #Error := False;
+	  END_IF;
+	  
+	  //Prozessdaten von der Signalbaugruppe lesen
+	  #piRetSFC := DPRD_DAT(LADDR := #HWIDZSW,
+	                        RECORD => #swRecvBuf);
+	  
+	  // Fehlermeldung der Rückmeldung ausgeben
+	  #DiagID := INT_TO_WORD(#piRetSFC);
+	  
+	  //Fehler beim Lesen (Profibus-Kommunikation unterbrochen)
+	  IF #piRetSFC <> 0 THEN
+	    
+	    // Fehler
+	    #Error := TRUE;
+	    #swStatus := 16#8600;
+	    
+	    // Zustandsworte löschen
+	    #sxRecvBuf.ZSW1 := W#16#0;
+	    #sxRecvBuf.EPosZSW1 := W#16#0;
+	    #sxRecvBuf.EPosZSW2 := W#16#0;
+	    #sxRecvBuf.ZSW2 := W#16#0;
+	    #sxRecvBuf.NotUsed := W#16#00;
+	    #sxRecvBuf.Position := DW#16#00;
+	    #sxRecvBuf.Velocity := DW#16#00;
+	    #sxRecvBuf.ErrNr := W#16#00;
+	    #sxRecvBuf.WarnNr := W#16#00;
+	    #sxRecvBuf.Reserve := W#16#00;
+	    
+	    // Werte auslesen
+	  ELSE
+	    
+	    // Fehler wieder zurück nehmen
+	    IF (#swStatus = 16#8600) THEN
+	      #swStatus := 16#7002;
+	      #Error := False;
+	    END_IF;
+	    
+	    #sxRecvBuf.ZSW1 := #swRecvBuf[0];
+	    #sxRecvBuf.EPosZSW1 := #swRecvBuf[1];
+	    #sxRecvBuf.EPosZSW2 := #swRecvBuf[2];
+	    #sxRecvBuf.ZSW2 := #swRecvBuf[3];
+	    #sxRecvBuf.NotUsed := #swRecvBuf[4];
+	    #sxRecvBuf.Position.%W1 := #swRecvBuf[5];
+	    #sxRecvBuf.Position.%W0 := #swRecvBuf[6];
+	    #sxRecvBuf.Velocity.%W1 := #swRecvBuf[7];
+	    #sxRecvBuf.Velocity.%W0 := #swRecvBuf[8];
+	    #sxRecvBuf.ErrNr := #swRecvBuf[9];
+	    #sxRecvBuf.WarnNr := #swRecvBuf[10];
+	    #sxRecvBuf.Reserve := #swRecvBuf[11];
+	    
+	    // ZSW1 aufbereiten
+	    //#Busy := #sxRecvBuf.sxZSW1.IOp;
+	    #sbBusy := #sxRecvBuf.ZSW1.%X2;
+	    
+	    // Fehler auswerten
+	    IF #sxRecvBuf.ZSW1.%X3 THEN
+	      #swStatus := 16#8401;
+	      #Error := True;
+	    ELSIF #sxRecvBuf.ZSW1.%X6 THEN
+	      #swStatus := 16#8402;
+	      #Error := True;
+	    ELSE
+	      // Fehler wieder zurück nehmen
+	      IF (#swStatus = 16#8401) OR (#swStatus = 16#8402) THEN
+	        #swStatus := 16#7002;
+	        #Error := False;
+	      END_IF;
+	    END_IF;
+	    
+	    // EPOS_ZSW1            
+	    // EPOS-Wort-1 BIT 00 --> 1 = Active traversing block bit 0
+	    //IF #sxRecvBuf.sxEPosZSW1.ActTrvBit0 THEN
+	    IF #sxRecvBuf.EPosZSW1.%X0 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#01;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FFFE;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 01 --> 1 = Active traversing block bit 1
+	    //IF #sxRecvBuf.sxEPosZSW1.ActTrvBit1 THEN
+	    IF #sxRecvBuf.EPosZSW1.%X1 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#02;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FFFD;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 02 --> 1 = Active traversing block bit 2
+	    //IF #sxRecvBuf.sxEPosZSW1.ActTrvBit2 THEN
+	    IF #sxRecvBuf.EPosZSW1.%X2 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#04;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FFFB;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 03 --> 1 = Active traversing block bit 3
+	    //IF #sxRecvBuf.sxEPosZSW1.ActTrvBit3 THEN
+	    IF #sxRecvBuf.EPosZSW1.%X3 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#08;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FFF7;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 04 --> 1 = Active traversing block bit 4 
+	    //IF #sxRecvBuf.sxEPosZSW1.ActTrvBit4 THEN
+	    IF #sxRecvBuf.EPosZSW1.%X4 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#10;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FFEF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 05 --> 1 = Active traversing block bit 5
+	    //IF #sxRecvBuf.sxEPosZSW1.ActTrvBit5 THEN
+	    IF #sxRecvBuf.EPosZSW1.%X5 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#20;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FFDF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 08 --> 1 = STOP cam minus active
+	    //IF #sxRecvBuf.sxEPosZSW1.StpCamMinAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X8 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#100;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FEFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 09 --> 1 = STOP cam plus active
+	    //IF #sxRecvBuf.sxEPosZSW1.StpCamPlsAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X9 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#200;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FDFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 10 --> 1 = Jogging active
+	    //IF #sxRecvBuf.sxEPosZSW1.JogAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X10 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#400;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#FBFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 11 --> 1 = Reference point approach active
+	    //IF #sxRecvBuf.sxEPosZSW1.RefAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X11 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#800;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#F7FF;
+	    END_IF;
+	    
+	    // Anstossen des fliegenden Referenzieren prüfen, wenn die Rückmeldung fehlt dann wiederholen
+	    //IF NOT #sxRecvBuf.sxEPosZSW1.FlyRefAct AND #sbRefTyp AND #sxSendBuf.sxSTW1.RefStart THEN
+	    IF NOT #sxRecvBuf.EPosZSW1.%X12 AND #sbRefTyp AND #sxSendBuf.STW1.%X11 THEN
+	      
+	      // Wiederholung anstossen 
+	      IF #siRefActRetry < #siRetryMax THEN
+	        #siRefActRetry := #siRefActRetry + 1;
+	        
+	        // Referenzieren starten wieder wegnehmen
+	        //#sxSendBuf.sxSTW1.RefStart := False;
+	        #sxSendBuf.STW1.%X11 := False;
+	      ELSE
+	        
+	        // Fehlermeldung
+	        #swStatus := 16#8403;
+	        #Error := True;
+	      END_IF;
+	    ELSE
+	      
+	      // Fehler wieder zurücknehmen, wenn er mal ausgelöst wurde
+	      IF #swStatus = 16#8403 THEN
+	        #swStatus := 16#7002;
+	        #Error := False;
+	      END_IF;
+	      // Zähler zurücksetzen bei Rückmeldung fliegendes Referenzieren jetzt aktiviert oder bei Abwahl der Funktion
+	      IF (#sxRecvBuf.EPosZSW1.%X12 AND #sbRefTyp AND #sxSendBuf.STW1.%X11) OR NOT #FlyRef THEN
+	        #siRefActRetry := 0;
+	      END_IF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 12 --> 1 = Flying referencing active
+	    //IF #sxRecvBuf.sxEPosZSW1.FlyRefAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X12 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#1000;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#EFFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 13 --> 1 = Traversing block active
+	    //IF #sxRecvBuf.sxEPosZSW1.TrvBlAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X13 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#2000;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#DFFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 14 --> 1 = MDI setup active
+	    //IF #sxRecvBuf.sxEPosZSW1.MdiStupAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X14 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#4000;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#BFFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-1 Bit 15 --> 1 = MDI positing active
+	    //IF #sxRecvBuf.sxEPosZSW1.MdiPosAct THEN
+	    IF #sxRecvBuf.EPosZSW1.%X15 THEN
+	      #swEPosZSW1 := #swEPosZSW1 OR W#16#8000;
+	    ELSE
+	      #swEPosZSW1 := #swEPosZSW1 AND W#16#7FFF;
+	    END_IF;
+	    
+	    // EPOS_ZSW2 
+	    // EPOS-Wort-2 Bit 00 --> 1 = Tracking mode active
+	    //IF #sxRecvBuf.sxEPosZSW2.TrkModeAct THEN
+	    IF #sxRecvBuf.EPosZSW2.%X0 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#01;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FFFE;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 01 --> 1 = Velocity limit active
+	    //IF #sxRecvBuf.sxEPosZSW2.VeloLimAct THEN
+	    IF #sxRecvBuf.EPosZSW2.%X1 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#02;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FFFD;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 02 --> 1 = Setpoint static
+	    //IF #sxRecvBuf.sxEPosZSW2.SetPStat THEN
+	    IF #sxRecvBuf.EPosZSW2.%X2 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#04;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FFFB;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 03 --> 1 = Printmark outside outer window
+	    //IF #sxRecvBuf.sxEPosZSW2.PrnMrkOut THEN
+	    IF #sxRecvBuf.EPosZSW2.%X3 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#08;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FFF7;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 04 --> 1 = Axis forwards
+	    //IF #sxRecvBuf.sxEPosZSW2.FWD THEN
+	    IF #sxRecvBuf.EPosZSW2.%X4 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#10;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FFEF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 05 --> 1 = Axis backwards
+	    //IF #sxRecvBuf.sxEPosZSW2.BWD THEN
+	    IF #sxRecvBuf.EPosZSW2.%X5 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#20;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FFDF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 06 --> 1 = Software limit switch minus active
+	    //IF #sxRecvBuf.sxEPosZSW2.SftSwMinAct THEN
+	    IF #sxRecvBuf.EPosZSW2.%X6 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#40;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FFBF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 07 --> 1 = Software limit switch plus active
+	    //IF #sxRecvBuf.sxEPosZSW2.SftSwPlsAct THEN
+	    IF #sxRecvBuf.EPosZSW2.%X7 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#80;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FF7F;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 08 --> 1 = Position actual value <= cam position 1
+	    //IF #sxRecvBuf.sxEPosZSW2.PosSmCam1 THEN
+	    IF #sxRecvBuf.EPosZSW2.%X8 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#100;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FEFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 09 --> 1 = Position actual value <= cam position 2
+	    //IF #sxRecvBuf.sxEPosZSW2.PosSmCam2 THEN
+	    IF #sxRecvBuf.EPosZSW2.%X9 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#200;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FDFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 10 --> 1 = Direct output 1 via traversing block
+	    //IF #sxRecvBuf.sxEPosZSW2.TrvOut1 THEN
+	    IF #sxRecvBuf.EPosZSW2.%X10 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#400;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#FBFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 11 --> 1 = Direct output 2 via traversing block
+	    //IF #sxRecvBuf.sxEPosZSW2.TrvOut2 THEN
+	    IF #sxRecvBuf.EPosZSW2.%X11 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#800;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#F7FF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 12 --> 1 = Fixed STOP reached
+	    //IF #sxRecvBuf.sxEPosZSW2.FxStpRd THEN
+	    IF #sxRecvBuf.EPosZSW2.%X12 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#1000;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#EFFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 13 --> 1 = Fixed STOP clamping torque reached
+	    //IF #sxRecvBuf.sxEPosZSW2.FxStpTrRd THEN
+	    IF #sxRecvBuf.EPosZSW2.%X13 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#2000;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#DFFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 14 --> 1 = Traversing fixed STOP active
+	    //IF #sxRecvBuf.sxEPosZSW2.TrvFxStpAct THEN
+	    IF #sxRecvBuf.EPosZSW2.%X14 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#4000;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#BFFF;
+	    END_IF;
+	    
+	    // EPOS-Wort-2 Bit 15 --> 1 = Traversing command active
+	    //IF #sxRecvBuf.sxEPosZSW2.CmdAct THEN
+	    IF #sxRecvBuf.EPosZSW2.%X15 THEN
+	      #swEPosZSW2 := #swEPosZSW2 OR W#16#8000;
+	    ELSE
+	      #swEPosZSW2 := #swEPosZSW2 AND W#16#7FFF;
+	    END_IF;
+	    
+	    #sbReady := #sxRecvBuf.ZSW1.%X1;
+	    
+	    #AxisEnabled := #sxRecvBuf.ZSW1.%X2;
+	    #sbIOp := #sxRecvBuf.ZSW1.%X2;
+	    
+	    #AxisError := #sxRecvBuf.ZSW1.%X3;
+	    #sbFault := #sxRecvBuf.ZSW1.%X3;
+	    
+	    #AxisWarn := #sxRecvBuf.ZSW1.%X7;
+	    #sbAlarm := #sxRecvBuf.ZSW1.%X7;
+	    
+	    #AxisPosOk := #sxRecvBuf.ZSW1.%X10;
+	    #AxisRef := #sxRecvBuf.ZSW1.%X11;
+	    #AxisSpFixed := #sxRecvBuf.ZSW1.%X13;
+	    
+	    #sbAccel := #sxRecvBuf.ZSW1.%X14;
+	    #sbDecel := #sxRecvBuf.ZSW1.%X15;
+	    
+	    #ActVelocity := DWORD_TO_DINT(#sxRecvBuf.Velocity);
+	    #ActPosition := DWORD_TO_DINT(#sxRecvBuf.Position);
+	    #ActMode := #ModePos;
+	    #ActWarn := #sxRecvBuf.WarnNr;
+	    #ActFault := #sxRecvBuf.ErrNr;
+	    
+	    #Lockout := #sxRecvBuf.ZSW1.%X6;
+	  END_IF;
+	ELSE
+	  
+	  // Fehler
+	  #Error := TRUE;
+	  #swStatus := 16#8601;
+	  
+	END_IF;
+	
+	// Initialisierung von Ausg㭧en
+	#Status := #swStatus;
+	#EPosZSW1 := #swEPosZSW1;
+	#EPosZSW2 := #swEPosZSW2;
+	
+END_FUNCTION_BLOCK
+

@@ -1,0 +1,81 @@
+﻿FUNCTION "St3_IO" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+	
+	        (* IO - Station 3 : RX *)
+	
+	
+	                  (* Input *)
+	
+	    //___ %I2.4 - Trappe d'entrée : Ouverte
+	    "St3_In".TrappeEntree_Ouvert := "IO_TrappeEntree_Ouvert";
+	    
+	    //___ %I2.5 - IO_TrappeEntree_Fermee
+	    "St3_In".TrappeEntree_Fermee := "IO_TrappeEntree_Fermee";
+	    
+	    //___ %I2.6 - Trappe de sortie : Ouverte
+	    "St3_In".TrappeSortie_Ouvert := "IO_TrappeSortie_Ouvert";
+	    
+	    //___ %I2.7 - Trappe de sortie : Fermée
+	    "St3_In".TrappeSortie_Fermee := "IO_TrappeSortie_Fermee";
+	    
+	    //___ %I3.0 - Obturateur : Ouvert
+	    "St3_In".Obturateur_Ouvert := "IO_Obturateur_Ouvert";
+	    
+	    //___ %I3.1 - Obturateur : Fermé
+	    "St3_In".Obturateur_Fermee := "IO_Obturateur_Fermee";
+	    
+	    //___ %I3.2 - Porte RX : Ouverte (Homme)
+	    "St3_In".PorteRX_Ouvert := "IO_PorteRX_Ouvert";
+	    
+	    //___ %I3.3 - Porte RX : Ferméee (Homme)
+	    "St3_In".PorteRX_Fermee := "IO_PorteRX_Fermee";
+	    
+	    //___ %I3.4 - Présence barquette en début de RX : RX1
+	    "St3_In".Cpt_RX1 := "IO_Cpt_RX1";
+	    
+	    //___ %I3.5 - Détection butée à came : RX2
+	    "St3_In".Cpt_RX2 := "IO_Cpt_RX2";
+	    
+	    //___ %I3.6 - Détection butée pivot : RX3
+	    "St3_In".Cpt_RX3 := "IO_Cpt_RX3";
+	    
+	    //___ %I3.7 - Obturateur Fermée + RX Actif
+	    "St3_In".Vy_Orange := "IO_Vy_Orange";
+	    
+	    //___ %I4.0 - Obturateur Ouvert + RX Actif
+	    "St3_In".Vy_Rouge := "IO_Vy_Rouge";
+	    
+	
+	                   (* Output *)
+	    
+	    //___ %Q1.4 - Ouverture : Trappe d'entrée
+	    "IO_Ouverture_TrappeEntree" := "St3_Out".Ouverture_TrappeEntree;
+	    
+	    //___ %Q1.5 - Fermeture : Trappe de sortie
+	    "IO_Fermeture_TrappeEntree" := "St3_Out".Fermeture_TrappeEntree;
+	    
+	    //___ %Q1.6 - Ouverture : Trappe de sortie
+	    "IO_Ouverture_TrappeSortie" := "St3_Out".Ouverture_TrappeSortie;
+	    
+	    //___ %Q1.7 - Fermeture : Trappe de sortie
+	    "IO_Fermeture_TrappeSortie" := "St3_Out".Fermeture_TrappeSortie;
+	    
+	    //___ %Q2.0 - Ouverture : Obturateur
+	    "IO_Ouverture_Obturateur" := "St3_Out".Ouverture_Obturateur;
+	    
+	    //___ %Q2.1 - Fermeture : Obturateur
+	    "IO_Fermeture_Obturateur" := "St3_Out".Fermeture_Obturateur;
+	    
+	    //___ %Q2.2 - Ouverte : Porte RX (Homme)
+	    "IO_Femerture_PorteRX" := "St3_Out".Femerture_PorteRX;
+	    
+	    //___ %Q2.3 - Fermeture : Porte RX (Homme)
+	    "IO_Ouverture_PorteRX" := "St3_Out".Ouverture_PorteRX;
+	    
+	    
+	    
+END_FUNCTION
+

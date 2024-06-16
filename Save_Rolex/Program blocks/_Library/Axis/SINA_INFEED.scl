@@ -1,0 +1,207 @@
+﻿FUNCTION_BLOCK "SINA_INFEED"
+TITLE = 'operate a line module'
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : DRVDPS7
+FAMILY : DRIVES
+NAME : SINA_INFEED
+VERSION : 5.2
+//Control basic infeed
+   VAR_INPUT 
+      EnablePrecharging : Bool;   // 0-->1 = Setup the DC Link (BLM/SLM/ALM) (OFF1 = 0-->1)
+      EnableInfeed : Bool;   // 1 = Enable "active" line modules  (only SLM / ALM)
+      AckFault : Bool;   // 1 = Acknowledge infeed error
+      ConfigAxis : Word := 16#0001;   // binary programmed input to control all functions in the telegram without its own function block input
+      HWIDSTW : HW_IO;   // Hardware Identifer set point slot
+      HWIDZSW : HW_IO;   // Hardware Identifer actual value slot
+   END_VAR
+
+   VAR_OUTPUT 
+      Ready { ExternalVisible := 'False'} : Bool;   // 1 = Infeed ready to power up
+      Operation { ExternalVisible := 'False'} : Bool;   // 1 = Infeed ready for operation
+      Run { ExternalVisible := 'False'} : Bool;   // 1 = Infeed in operation (only SLM / ALM)
+      Fault { ExternalVisible := 'False'} : Bool;   // 1 = Infeed error active
+      Lockout { ExternalVisible := 'False'} : Bool;   // 1 = Infeed lockout active
+      Warning { ExternalVisible := 'False'} : Bool;   // 1 = Infeed warning active
+      ZSW1 : Word := 16#0000;   // Infeed Status word
+      Error { ExternalVisible := 'False'} : Bool;   // Rising edge informs that an error occurred during the execution of
+      Status : Word := #STATUS_SUBSEQUENT_CALL;   // Status output (7002 = FB in operation; 8xxx = error description  - read the manual)
+      DiagID : Word;   // Error codes of the cyclic system funtion blocks DPWR / DPRD_DAT
+   END_VAR
+
+   VAR 
+      statStwOnOff : Bool;   // STW 1.0
+      statStwOff2 : Bool;   // STW 1.1
+      statStwQuickStop : Bool;   // STW 1.2
+      statStwOperation : Bool;   // STW 1.3
+      statStwReleaseRunup : Bool;   // STW 1.4
+      statStwDisMotOp : Bool;   // STW 1.5
+      statStwDisRegOp : Bool;   // STW 1.6
+      statStwAckFault : Bool;   // STW 1.7
+      statStwConductRequested : Bool;   // STW 1.10
+      statStwDirectOfRot : Bool;   // STW 1.11
+      statSTW1 : Word := 16#0062;
+      statReady : Bool;
+      statOperation : Bool;
+      statRun : Bool;
+      statFault : Bool;
+      statLockout : Bool;
+      statWarning : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      tempRetValDPRD : Int;   // Temporary value for infeed enabled
+      tempRetValDPWR : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      STATUS_SUBSEQUENT_CALL : Word := 16#7002;   // Subsequent call of FB
+      STATUS_WARN_INFEED : Word := 16#7200;   // Infeed warning active
+      STATUS_ERROR_PRE : Word := 16#8400;   // Infeed error with the precharge step
+      STATUS_ERROR_INF : Word := 16#8401;   // Infeed error (general)
+      STATUS_ERROR_DPRD_DAT : Word := 16#8600;   // Error "Read cyclic data" operation
+      STATUS_ERROR_DPWR_DAT : Word := 16#8601;   // Error "Write cyclic data" operation
+   END_VAR
+
+
+BEGIN
+	//=============================================================================
+	//SIEMENS AG
+	//(c)Copyright 2017 All Rights Reserved
+	//-----------------------------------------------------------------------------
+	// Library: DriveLib
+	// Tested with: S7-1516-3 PN/DP V1.8
+	// Engineering: TIA Portal V14
+	// Restrictions: -
+	// Requirements: S7-1200 / S7-1500
+	// Functionality: the block serves to supply a rectifier unit line module
+	//-----------------------------------------------------------------------------
+	// Change log table:
+	// Version Date       Expert in charge Changes applied
+	// 0.1     28.09.2015 ZP               First released version
+	// 0.2     09.11.2015 ZP               no internal acknowledgment
+	// 0.3     30.11.2015 ZP               new input parameter ConfigAxis
+	// 5.0     11.01.2017 FG               adapt version to new DriveLib version
+	// 5.1     02.05.2018 FG               Connect all bits from ConfigAxis with
+	//                                     the Bits from STW1
+	// 5.2     10.06.2021 FG               Error correction RQ 5680664
+	//=============================================================================
+	
+	// presetting STW1
+	#statStwOnOff := FALSE;     // STW1.0
+	#statStwOperation := FALSE;     // STW1.3
+	#statStwAckFault := FALSE;      // STW1.7
+	#statStwConductRequested := true; //STW1.10 conduct requested set cyclic
+	
+	// external setting of STW1
+	#statStwOff2 := #ConfigAxis.%X0;  // TRUE if "ConfigAxis" is not assigned STW1.1
+	
+	#statStwDisMotOp := #ConfigAxis.%X2;  // TRUE if "ConfigAxis" is not assigned STW1.5
+	#statStwDisRegOp := #ConfigAxis.%X3; // TRUE if "ConfigAxis" is not assigned STW1.6
+	
+	// reset error
+	#Error := FALSE;
+	// acknowledge fault?
+	
+	IF #AckFault THEN
+	  #statStwAckFault := TRUE;  // input AckFault into STW1.7
+	END_IF;
+	
+	// read status word
+	#tempRetValDPRD := DPRD_DAT(LADDR := #HWIDZSW, RECORD => #ZSW1);
+	
+	//==========================================
+	//#ZSW1 := "SIM_ZSW1";  // only for test
+	//==========================================
+	
+	// write status word into static word
+	#statReady := #ZSW1.%X0;
+	#statOperation := #ZSW1.%X1;
+	#statRun := #ZSW1.%X2;
+	#statFault := #ZSW1.%X3;
+	#statLockout := #ZSW1.%X6;
+	#statWarning := #ZSW1.%X7;
+	
+	// write status word to output
+	#Ready := #statReady;
+	#Operation := #statOperation;
+	#Run := #statRun;
+	#Fault := #statFault;
+	#Lockout := #statLockout;
+	#Warning := #statWarning;
+	
+	// Check preconditions
+	IF #EnablePrecharging AND #Ready AND NOT #Lockout AND NOT #Fault THEN
+	  #statStwOnOff := TRUE;      // STW1.0 
+	  //  #statStwAckFault := FALSE;      // STW1.7
+	END_IF;
+	
+	IF #EnablePrecharging AND #Ready AND NOT #Lockout AND NOT #Fault AND NOT #EnableInfeed THEN
+	  #statStwOperation := FALSE;     // STW1.3
+	END_IF;
+	
+	IF #EnablePrecharging AND #Ready AND NOT #Lockout AND NOT #Fault AND #EnableInfeed AND NOT #Operation THEN
+	  #statStwOperation := FALSE;     // STW1.3
+	END_IF;
+	
+	IF #EnablePrecharging AND #Ready AND NOT #Lockout AND NOT #Fault AND #EnableInfeed AND #Ready AND #Operation THEN
+	  #statStwOperation := TRUE;     // STW1.3
+	END_IF;
+	
+	//Error handling and diagnistic DPRD_DAT / DPWR_DAT 
+	#Status := #STATUS_SUBSEQUENT_CALL;     // no error activ 16#7002
+	
+	IF (NOT #EnablePrecharging AND #EnableInfeed) THEN
+	  #Error := TRUE;
+	  #Status := #STATUS_ERROR_PRE; // error precharching 16#8400
+	  #statStwOperation := FALSE;     // STW1.3 
+	  #statStwOnOff := FALSE;     // STW1.0
+	END_IF;
+	
+	IF (NOT #EnablePrecharging AND NOT #EnableInfeed) THEN
+	  #statStwOperation := FALSE;     // STW1.3 
+	  #statStwOnOff := FALSE;     // STW1.0
+	END_IF;
+	
+	// write control word - internal 
+	#statSTW1.%X0 := #statStwOnOff;
+	#statSTW1.%X3 := #statStwOperation;
+	#statSTW1.%X7 := #statStwAckFault;
+	#statSTW1.%X10 := #statStwConductRequested;
+	// write control word - external 
+	#statSTW1.%X1 := #statStwOff2;
+	#statSTW1.%X2 := #ConfigAxis.%X4;
+	#statSTW1.%X4 := #ConfigAxis.%X5;
+	#statSTW1.%X5 := #statStwDisMotOp;
+	#statSTW1.%X6 := #statStwDisRegOp;
+	#statSTW1.%X8 := #ConfigAxis.%X6;
+	#statSTW1.%X9 := #ConfigAxis.%X7;
+	#statSTW1.%X11 := #ConfigAxis.%X8;
+	#statSTW1.%X12 := #ConfigAxis.%X9;
+	#statSTW1.%X13 := #ConfigAxis.%X10;
+	#statSTW1.%X14 := #ConfigAxis.%X11;
+	#statSTW1.%X15 := #ConfigAxis.%X12;
+	
+	#tempRetValDPWR := DPWR_DAT(LADDR := #HWIDSTW, RECORD := #statSTW1); // write STW1
+	
+	#DiagID := 16#0;
+	
+	IF #Warning THEN
+	  #Status := #STATUS_WARN_INFEED;     // warning infeed 16#7200
+	ELSIF #Fault THEN
+	  #Status := #STATUS_ERROR_INF;       // error infeed 16#8401
+	ELSIF #tempRetValDPRD <> 16#0 THEN
+	  #Status := #STATUS_ERROR_DPRD_DAT;       // error code DPRD_DAT 16#8600
+	  #DiagID := INT_TO_WORD(#tempRetValDPRD);        // diagnistic DPRD_DAT
+	  #Error := TRUE;
+	ELSIF #tempRetValDPWR <> 16#0 THEN
+	  #Status := #STATUS_ERROR_DPWR_DAT;       // error code DPWR_DAT 16#8601
+	  #DiagID := INT_TO_WORD(#tempRetValDPWR);        // diagnistic DPWR_DAT
+	  #Error := TRUE;
+	END_IF;
+	
+	
+	
+	
+	
+END_FUNCTION_BLOCK
+

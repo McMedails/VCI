@@ -1,0 +1,57 @@
+﻿FUNCTION "IO_St1" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+	
+	        (* IO - Station 1 : Chargement - Empilement *)
+	
+	
+	                  (* Input *)
+	
+	    //___ %I1.0 - Pinces de préhension Z : Ouverte
+	    "St1_In".Pinces_Ouvert := "IO_Pinces_Ouvert";
+	    
+	    //___ %I1.1 - Pinces de préhension Z : Fermée
+	    "St1_In".Pinces_Fermee := "IO_Pinces_Fermee";
+	    
+	    //___ %I1.2 - Présence pile devant capteur Chargement AR : C1
+	    "St1_In".Cpt_C1 := "IO_Cpt_C1";
+	    
+	    //___ %I1.3 - Présence pile devant capteur Chargement AR : C2
+	    "St1_In".Cpt_C2 := "IO_Cpt_C2";
+	    
+	    //___ %I1.4 - Présence pile devant capteur Chargement AV : C3
+	    "St1_In".Cpt_C3 := "IO_Cpt_C3";
+	    
+	    //___ %I1.5 - Présence pile devant capteur Chargement AV : C4
+	    "St1_In".Cpt_C4 := "IO_Cpt_C4";
+	    
+	    //___ %I1.6 - Présence pile devant capteur Dépilement : C5
+	    "St1_In".Cpt_C5 := "IO_Cpt_C5";
+	    
+	    //___ %I1.7 - Détection collage barquette Dépilement : C6 
+	    "St1_In".Cpt_C6 := "IO_Cpt_C6";
+	    
+	    //___ %I2.0 - Détection collage barquette Dépilement : C7 
+	    "St1_In".Cpt_C7 := "IO_Cpt_C7";
+	    
+	    
+	                   (* Output *)
+	    
+	    //___ %Q1.0 - Ouverture : Pinces de préhension 
+	    "IO_Ouverture_Pinces" := "St1_Out".Ouverture_Pinces;
+	    
+	    //___ %Q1.1 - Fermeture : Pinces de préhension
+	    "IO_Fermeture_Pinces" := "St1_Out".Fermeture_Pinces;
+	    
+	    //___ %Q1.2 - Conditions sur voyant C2 : OK
+	    "IO_Vy_PileAV" := "St1_Out".Vy_PileAV;
+	    
+	    //___ %Q1.3 - Conditions sur voyant C4 : OK
+	    "IO_Vy_PileAR" := "St1_Out".Vy_PileAR;
+	    
+	    
+	    
+END_FUNCTION
+

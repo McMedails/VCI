@@ -1,0 +1,72 @@
+﻿FUNCTION_BLOCK "S00_Mode_FB"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      Step : Int;
+   END_VAR
+
+   VAR 
+      Step_100 : Int;
+      Auto : Bool;
+      Manu : Bool;
+      PaP : Bool;
+   END_VAR
+
+
+BEGIN
+	                
+	                (* Manager : S00_Mode *)
+	
+	// Etape en cours
+	#Step := #Step_100;
+	
+	CASE #Step_100 OF
+	        
+	    0 :  // Etape Init
+	        #Step_100 := 10;
+	        
+	        
+	    10 : // Choix du mode
+	        ////////// AUTO /////////// 
+	        IF "Visu".Page.iAuto THEN
+	            #Auto := TRUE;
+	            #Step_100 := 100;
+	        END_IF;
+	      ////////// MANU /////////// 
+	        IF "Visu".Page.iManu THEN
+	            #Manu := TRUE;
+	            #Step_100 := 200;
+	        END_IF;
+	      ////////// PaP /////////// 
+	        IF "Visu".Page.iPaP THEN
+	            #PaP := TRUE;
+	            #Step_100 := 300;
+	        END_IF;
+	      
+	      
+	    100 : // OUT AUTO
+	        IF NOT "Visu".Page.iAuto THEN
+	            #Auto := FALSE;
+	            #Step_100 := 10;
+	        END_IF;
+	        
+	        
+	    200 : // OUT MANU
+	        IF NOT "Visu".Page.iManu THEN
+	            #Manu := FALSE;
+	            #Step_100 := 10;
+	        END_IF;
+	        
+	        
+	    300 : // OUT PAP
+	        IF NOT "Visu".Page.iPaP THEN
+	            #PaP := FALSE;
+	            #Step_100 := 10;
+	        END_IF;
+	        
+	        
+	END_CASE;
+	
+	
+END_FUNCTION_BLOCK
+

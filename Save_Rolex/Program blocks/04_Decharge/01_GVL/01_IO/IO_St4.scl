@@ -1,0 +1,86 @@
+﻿FUNCTION "IO_St4" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+	
+	        (* IO - Station 4 : Dechargement  *)
+	
+	
+	                  (* Input *)
+	
+	    //___ %I4.1 - Loquet haut : Pas de déplacement barquette 
+	    "St4_In".Loquet_Haut := "IO_Loquet_Haut";
+	    
+	    //___ %I4.2 - Présence pile en zone de marquage
+	    "St4_In".Cpt_M := "IO_Cpt_M";
+	    
+	    //___ %I4.3 - Pinces de préhension Déchagement C : Ouverte
+	    "St4_In".PincesDC_Ouvert := "IO_PincesDC_Ouvert";
+	    
+	    //___ %I4.4 - Pinces de préhension Déchagement  C : Fermée
+	    "St4_In".PincesDC_Fermee := "IO_PincesDC_Fermee";
+	    
+	    //___ %I4.5 - Présence pile en zone Déchagement C1
+	    "St4_In".Cpt_DC1 := "IO_Cpt_DC1";
+	    
+	    //___ %I4.6 - Présence pile en zone Déchagement : C2
+	    "St4_In".Cpt_DC2 := "IO_Cpt_DC2";
+	    
+	    //___ %I4.7 - Poussoir C en position : Haut
+	    "St4_In".PoussoirC_Haut := "IO_PoussoirC_Haut";
+	    
+	    //___ %5.0 - Pinces de préhension Déchagement  NC : Ouverte
+	    "St4_In".PincesDNC_Ouvert := "IO_PincesDNC_Ouvert";
+	    
+	    //___ %5.1 - Pinces de préhension Déchagement NC : Ferméee
+	    "St4_In".PincesDNC_Fermee := "IO_PincesDNC_Fermee";
+	    
+	    //___ %5.2 - Présence pile en zone Déchagement NC0
+	    "St4_In".Cpt_DNC0 := "IO_Cpt_DNC0";
+	    
+	    //___ %5.3 - Présence pile en zone Déchagement  DNC1
+	    "St4_In".Cpt_DNC1 := "IO_Cpt_DNC1";
+	    
+	    //___ %5.4 - Présence pile en zone Déchagement DNC2
+	    "St4_In".Cpt_DNC2 := "IO_Cpt_DNC2";
+	    
+	    //___ %5.5 - Poussoir NC en position : Haut
+	    "St4_In".PoussoirNC_Haut := "IO_PoussoirNC_Haut";
+	    
+	    
+	                   (* Output *)
+	    
+	    //___ %Q2.4 - Sortir : Loquet (Déplacement Barquette)
+	    "IO_Sortir_Loquet" := "St4_Out".Sortir_Loquet;
+	    
+	    //___ %Q2.5 - Sortir : Poussoir Z-OK
+	    "IO_Sortir_PoussoirC" := "St4_Out".Sortir_PoussoirC;
+	    
+	    //___ %Q2.6 - Ouverture : Pinces C
+	    "IO_Ouverture_PincesC" := "St4_Out".Ouverture_PincesC;
+	    
+	    //___ %Q2.7 - Fermeture : Pinces C
+	    "IO_Fermeture_PincesC":= "St4_Out".Fermeture_PincesC;
+	    
+	    //___ %Q3.0 - Zone Conforme pleine - A vidanger
+	    "IO_Vy_C" := "St4_Out".Vy_C;
+	    
+	    //___ %Q3.1 - Sortir Poussoir NC
+	    "IO_Sortir_PoussoirNC" := "St4_Out".Sortir_PoussoirNC;
+	    
+	    //___ %Q3.2 - Ouverture Pinces NC
+	    "IO_Ouverture_PincesNC":= "St4_Out".Ouverture_PincesNC;
+	    
+	    //___ %Q3.3 - Fermeture Pinces NC
+	    "IO_Fermeture_PincesNC" := "St4_Out".Ouverture_PincesNC;
+	    
+	    //___ %Q3.4 - Zone Non-Conforme pleine - A vidanger
+	    "IO_Vy_NC" := "St4_Out".Vy_NC;
+	    
+	    
+	    
+	    
+	    
+END_FUNCTION
+

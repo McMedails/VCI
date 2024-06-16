@@ -1,0 +1,24 @@
+﻿FUNCTION "IO_St2" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+	
+	        (* IO - Station 2 : Vision *)
+	
+	
+	                  (* Input *)
+	
+	    //___ %I2.1 - Présence barquette en début de Vision : V1
+	    "St2_In".Cpt_V1 := "IO_Cpt_V1";
+	    
+	    //___ %I2.2 - Détection butée à came : V2
+	    "St2_In".Cpt_V2 := "IO_Cpt_V2";
+	    
+	    //___ %I2.3 - Détection butée pivot : V3
+	    "St2_In".Cpt_V3 := "IO_Cpt_V3";
+	    
+	
+	                   (* Output *)
+END_FUNCTION
+
