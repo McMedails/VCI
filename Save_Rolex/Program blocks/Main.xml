@@ -2,7 +2,7 @@
 <Document>
   <Engineering version="V17" />
   <DocumentInfo>
-    <Created>2024-06-16T17:47:18.7698595Z</Created>
+    <Created>2024-06-19T09:47:09.9765736Z</Created>
     <ExportSetting>WithDefaults</ExportSetting>
     <InstalledProducts>
       <Product>
@@ -68,7 +68,11 @@
           <MultilingualTextItem ID="2" CompositionName="Items">
             <AttributeList>
               <Culture>en-US</Culture>
-              <Text />
+              <Text>*********************  Création : 01/06/2024  *********************
+*****************  Kep Technologies - Caluire 69150  ****************
+************************  RM Automation  ***********************
+**********************  Auteur: Rebouh.M  ***********************
+***************** Contact : Rebouh.mehdi@hotmail.fr  ***************</Text>
             </AttributeList>
           </MultilingualTextItem>
         </ObjectList>
@@ -146,7 +150,7 @@
               <MultilingualTextItem ID="C" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>IO Station 0 : Machine</Text>
+                  <Text>IO Station 0</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -186,7 +190,7 @@
               <MultilingualTextItem ID="11" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>IO Station 1 : Chargement</Text>
+                  <Text>IO Station 1</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -226,7 +230,7 @@
               <MultilingualTextItem ID="16" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>IO Station 2 : Vision</Text>
+                  <Text>IO Station 2</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -266,7 +270,7 @@
               <MultilingualTextItem ID="1B" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>IO Station 3 : RX</Text>
+                  <Text>IO Station 3</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -306,7 +310,7 @@
               <MultilingualTextItem ID="20" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>IO Station 4 : Dechargement</Text>
+                  <Text>IO Station 4</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -318,15 +322,11 @@
           <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4">
   <Parts>
     <Call UId="21">
-      <CallInfo Name="Obj_St1_FB" BlockType="FB">
-        <Instance Scope="GlobalVariable" UId="22">
-          <Component Name="Obj_St1" />
-        </Instance>
-      </CallInfo>
+      <CallInfo Name="Obj_St1" BlockType="FC" />
     </Call>
   </Parts>
   <Wires>
-    <Wire UId="23">
+    <Wire UId="22">
       <Powerrail />
       <NameCon UId="21" Name="en" />
     </Wire>
@@ -350,7 +350,7 @@
               <MultilingualTextItem ID="25" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>Obj Station 1 : Chargement</Text>
+                  <Text>Obj Station </Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -362,15 +362,11 @@
           <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4">
   <Parts>
     <Call UId="21">
-      <CallInfo Name="Obj_St2_FB" BlockType="FB">
-        <Instance Scope="GlobalVariable" UId="22">
-          <Component Name="Obj_St2" />
-        </Instance>
-      </CallInfo>
+      <CallInfo Name="Obj_St2" BlockType="FC" />
     </Call>
   </Parts>
   <Wires>
-    <Wire UId="23">
+    <Wire UId="22">
       <Powerrail />
       <NameCon UId="21" Name="en" />
     </Wire>
@@ -394,7 +390,7 @@
               <MultilingualTextItem ID="2A" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>Obj Station 2 : Vision</Text>
+                  <Text>Obj Station 2</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -406,15 +402,11 @@
           <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4">
   <Parts>
     <Call UId="21">
-      <CallInfo Name="Obj_St3_FB" BlockType="FB">
-        <Instance Scope="GlobalVariable" UId="22">
-          <Component Name="Obj_St3" />
-        </Instance>
-      </CallInfo>
+      <CallInfo Name="Obj_St3" BlockType="FC" />
     </Call>
   </Parts>
   <Wires>
-    <Wire UId="23">
+    <Wire UId="22">
       <Powerrail />
       <NameCon UId="21" Name="en" />
     </Wire>
@@ -438,7 +430,7 @@
               <MultilingualTextItem ID="2F" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>Obj Station 3 : RX</Text>
+                  <Text>Obj Station 3</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -450,15 +442,11 @@
           <NetworkSource><FlgNet xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/FlgNet/v4">
   <Parts>
     <Call UId="21">
-      <CallInfo Name="Obj_St4_FB" BlockType="FB">
-        <Instance Scope="GlobalVariable" UId="22">
-          <Component Name="Obj_St4" />
-        </Instance>
-      </CallInfo>
+      <CallInfo Name="Obj_St4" BlockType="FC" />
     </Call>
   </Parts>
   <Wires>
-    <Wire UId="23">
+    <Wire UId="22">
       <Powerrail />
       <NameCon UId="21" Name="en" />
     </Wire>
@@ -482,7 +470,7 @@
               <MultilingualTextItem ID="34" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>Obj Station 4 : Dechargement</Text>
+                  <Text>Obj Station 4</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -522,7 +510,7 @@
               <MultilingualTextItem ID="39" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>G7 Station 1 : Chargement</Text>
+                  <Text>G7 Station 1</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -562,7 +550,7 @@
               <MultilingualTextItem ID="3E" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>G7 Station 2 : Vision</Text>
+                  <Text>G7 Station 2</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -602,7 +590,7 @@
               <MultilingualTextItem ID="43" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>G7 Station 3 : RX</Text>
+                  <Text>G7 Station 3</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -642,7 +630,7 @@
               <MultilingualTextItem ID="48" CompositionName="Items">
                 <AttributeList>
                   <Culture>en-US</Culture>
-                  <Text>G7 Station 4 : Dechargement</Text>
+                  <Text>G7 Station 4</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -677,37 +665,9 @@
           </MultilingualText>
         </ObjectList>
       </SW.Blocks.CompileUnit>
-      <SW.Blocks.CompileUnit ID="4E" CompositionName="CompileUnits">
-        <AttributeList>
-          <NetworkSource />
-          <ProgrammingLanguage>LAD</ProgrammingLanguage>
-        </AttributeList>
+      <MultilingualText ID="4E" CompositionName="Title">
         <ObjectList>
-          <MultilingualText ID="4F" CompositionName="Comment">
-            <ObjectList>
-              <MultilingualTextItem ID="50" CompositionName="Items">
-                <AttributeList>
-                  <Culture>en-US</Culture>
-                  <Text />
-                </AttributeList>
-              </MultilingualTextItem>
-            </ObjectList>
-          </MultilingualText>
-          <MultilingualText ID="51" CompositionName="Title">
-            <ObjectList>
-              <MultilingualTextItem ID="52" CompositionName="Items">
-                <AttributeList>
-                  <Culture>en-US</Culture>
-                  <Text />
-                </AttributeList>
-              </MultilingualTextItem>
-            </ObjectList>
-          </MultilingualText>
-        </ObjectList>
-      </SW.Blocks.CompileUnit>
-      <MultilingualText ID="53" CompositionName="Title">
-        <ObjectList>
-          <MultilingualTextItem ID="54" CompositionName="Items">
+          <MultilingualTextItem ID="4F" CompositionName="Items">
             <AttributeList>
               <Culture>en-US</Culture>
               <Text>"Main Program Sweep (Cycle)"</Text>

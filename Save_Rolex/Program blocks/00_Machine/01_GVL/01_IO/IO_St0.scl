@@ -48,16 +48,22 @@ BEGIN
 	    //___ %Q0.3 - Verrouillage : Porte maintenance arrière machine
 	    "IO_Verrou_PorteArriere" := "St0_Out".Verrou_PorteArriere;
 	    
-	    //___ %Q0.4 - Colonne lumineuse : Rouge
+	    //___ %Q0.4 - Ouverture : Porte d'entrée
+	    "IO_Ouverture_PorteEntree" := "St0_Out".Ouverture_PorteEntree;
+	    
+	    //___ %Q0.5 - Ouverture : Porte de sortie
+	    "IO_Ouverture_PorteSortie" := "St0_Out".Ouverture_PorteSortie;
+	    
+	    //___ %Q0.6 - Colonne lumineuse : Rouge
 	    "IO_LED_Rouge" := "St0_Out".LED_Rouge;
 	    
-	    //___ %Q0.5 - Colonne lumineuse : Orange
+	    //___ %Q0.7 - Colonne lumineuse : Orange
 	    "IO_LED_Orange" := "St0_Out".LED_Orange;
 	    
-	    //___ %Q0.6 - Colonne lumineuse : Vert
+	    //___ %Q1.0 - Colonne lumineuse : Vert
 	    "IO_LED_Vert" := "St0_Out".LED_Vert;
 	    
-	    //___ %Q0.7 - Colonne lumineuse : Bleu
+	    //___ %Q1.1 - Colonne lumineuse : Bleu
 	    "IO_LED_Bleu" := "St0_Out".LED_Bleu;
 	    
 	    

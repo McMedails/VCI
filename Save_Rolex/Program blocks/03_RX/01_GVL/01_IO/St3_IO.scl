@@ -51,28 +51,28 @@ BEGIN
 	
 	                   (* Output *)
 	    
-	    //___ %Q1.4 - Ouverture : Trappe d'entrée
+	    //___ %Q1.6 - Ouverture : Trappe d'entrée
 	    "IO_Ouverture_TrappeEntree" := "St3_Out".Ouverture_TrappeEntree;
 	    
-	    //___ %Q1.5 - Fermeture : Trappe de sortie
+	    //___ %Q1.7 - Fermeture : Trappe de sortie
 	    "IO_Fermeture_TrappeEntree" := "St3_Out".Fermeture_TrappeEntree;
 	    
-	    //___ %Q1.6 - Ouverture : Trappe de sortie
+	    //___ %Q2.0 - Ouverture : Trappe de sortie
 	    "IO_Ouverture_TrappeSortie" := "St3_Out".Ouverture_TrappeSortie;
 	    
-	    //___ %Q1.7 - Fermeture : Trappe de sortie
+	    //___ %Q2.1 - Fermeture : Trappe de sortie
 	    "IO_Fermeture_TrappeSortie" := "St3_Out".Fermeture_TrappeSortie;
 	    
-	    //___ %Q2.0 - Ouverture : Obturateur
+	    //___ %Q2.3 - Ouverture : Obturateur
 	    "IO_Ouverture_Obturateur" := "St3_Out".Ouverture_Obturateur;
 	    
-	    //___ %Q2.1 - Fermeture : Obturateur
+	    //___ %Q2.4 - Fermeture : Obturateur
 	    "IO_Fermeture_Obturateur" := "St3_Out".Fermeture_Obturateur;
 	    
-	    //___ %Q2.2 - Ouverte : Porte RX (Homme)
+	    //___ %Q2.5 - Ouverte : Porte RX (Homme)
 	    "IO_Femerture_PorteRX" := "St3_Out".Femerture_PorteRX;
 	    
-	    //___ %Q2.3 - Fermeture : Porte RX (Homme)
+	    //___ %Q2.6 - Fermeture : Porte RX (Homme)
 	    "IO_Ouverture_PorteRX" := "St3_Out".Ouverture_PorteRX;
 	    
 	    

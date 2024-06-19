@@ -28,38 +28,38 @@ BEGIN
 	        
 	    10 : // Choix du mode
 	        ////////// AUTO /////////// 
-	        IF "Visu".Page.iAuto THEN
+	        IF "Visu".Page.xAuto THEN
 	            #Auto := TRUE;
 	            #Step_100 := 100;
 	        END_IF;
 	      ////////// MANU /////////// 
-	        IF "Visu".Page.iManu THEN
+	        IF "Visu".Page.xManu THEN
 	            #Manu := TRUE;
 	            #Step_100 := 200;
 	        END_IF;
 	      ////////// PaP /////////// 
-	        IF "Visu".Page.iPaP THEN
+	        IF "Visu".Page.xPaP THEN
 	            #PaP := TRUE;
 	            #Step_100 := 300;
 	        END_IF;
 	      
 	      
 	    100 : // OUT AUTO
-	        IF NOT "Visu".Page.iAuto THEN
+	        IF NOT "Visu".Page.xAuto THEN
 	            #Auto := FALSE;
 	            #Step_100 := 10;
 	        END_IF;
 	        
 	        
 	    200 : // OUT MANU
-	        IF NOT "Visu".Page.iManu THEN
+	        IF NOT "Visu".Page.xManu THEN
 	            #Manu := FALSE;
 	            #Step_100 := 10;
 	        END_IF;
 	        
 	        
 	    300 : // OUT PAP
-	        IF NOT "Visu".Page.iPaP THEN
+	        IF NOT "Visu".Page.xPaP THEN
 	            #PaP := FALSE;
 	            #Step_100 := 10;
 	        END_IF;

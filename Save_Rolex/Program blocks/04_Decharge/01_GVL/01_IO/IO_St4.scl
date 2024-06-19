@@ -51,31 +51,31 @@ BEGIN
 	    
 	                   (* Output *)
 	    
-	    //___ %Q2.4 - Sortir : Loquet (Déplacement Barquette)
+	    //___ %Q2.6 - Sortir : Loquet (Déplacement Barquette)
 	    "IO_Sortir_Loquet" := "St4_Out".Sortir_Loquet;
 	    
-	    //___ %Q2.5 - Sortir : Poussoir Z-OK
+	    //___ %Q2.7 - Sortir : Poussoir Z-OK
 	    "IO_Sortir_PoussoirC" := "St4_Out".Sortir_PoussoirC;
 	    
-	    //___ %Q2.6 - Ouverture : Pinces C
+	    //___ %Q3.0 - Ouverture : Pinces C
 	    "IO_Ouverture_PincesC" := "St4_Out".Ouverture_PincesC;
 	    
-	    //___ %Q2.7 - Fermeture : Pinces C
+	    //___ %Q3.1 - Fermeture : Pinces C
 	    "IO_Fermeture_PincesC":= "St4_Out".Fermeture_PincesC;
 	    
-	    //___ %Q3.0 - Zone Conforme pleine - A vidanger
+	    //___ %Q3.2 - Zone Conforme pleine - A vidanger
 	    "IO_Vy_C" := "St4_Out".Vy_C;
 	    
-	    //___ %Q3.1 - Sortir Poussoir NC
+	    //___ %Q3.3 - Sortir Poussoir NC
 	    "IO_Sortir_PoussoirNC" := "St4_Out".Sortir_PoussoirNC;
 	    
-	    //___ %Q3.2 - Ouverture Pinces NC
+	    //___ %Q3.4 - Ouverture Pinces NC
 	    "IO_Ouverture_PincesNC":= "St4_Out".Ouverture_PincesNC;
 	    
-	    //___ %Q3.3 - Fermeture Pinces NC
+	    //___ %Q3.5 - Fermeture Pinces NC
 	    "IO_Fermeture_PincesNC" := "St4_Out".Ouverture_PincesNC;
 	    
-	    //___ %Q3.4 - Zone Non-Conforme pleine - A vidanger
+	    //___ %Q3.6 - Zone Non-Conforme pleine - A vidanger
 	    "IO_Vy_NC" := "St4_Out".Vy_NC;
 	    
 	    

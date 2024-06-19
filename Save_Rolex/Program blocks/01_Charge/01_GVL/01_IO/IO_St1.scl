@@ -39,16 +39,16 @@ BEGIN
 	    
 	                   (* Output *)
 	    
-	    //___ %Q1.0 - Ouverture : Pinces de préhension 
+	    //___ %Q1.2 - Ouverture : Pinces de préhension 
 	    "IO_Ouverture_Pinces" := "St1_Out".Ouverture_Pinces;
 	    
-	    //___ %Q1.1 - Fermeture : Pinces de préhension
+	    //___ %Q1.3 - Fermeture : Pinces de préhension
 	    "IO_Fermeture_Pinces" := "St1_Out".Fermeture_Pinces;
 	    
-	    //___ %Q1.2 - Conditions sur voyant C2 : OK
+	    //___ %Q1.4 - Conditions sur voyant C2 : OK
 	    "IO_Vy_PileAV" := "St1_Out".Vy_PileAV;
 	    
-	    //___ %Q1.3 - Conditions sur voyant C4 : OK
+	    //___ %Q1.5 - Conditions sur voyant C4 : OK
 	    "IO_Vy_PileAR" := "St1_Out".Vy_PileAR;
 	    
 	    

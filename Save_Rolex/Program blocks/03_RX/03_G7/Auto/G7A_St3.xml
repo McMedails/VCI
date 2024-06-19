@@ -2,7 +2,7 @@
 <Document>
   <Engineering version="V17" />
   <DocumentInfo>
-    <Created>2024-06-16T17:47:31.7168888Z</Created>
+    <Created>2024-06-19T09:47:13.602572Z</Created>
     <ExportSetting>WithDefaults</ExportSetting>
     <InstalledProducts>
       <Product>
@@ -51,7 +51,7 @@
       <IsIECCheckEnabled>false</IsIECCheckEnabled>
       <MemoryLayout>Optimized</MemoryLayout>
       <Name>G7A_St3</Name>
-      <Number>305</Number>
+      <Number>310</Number>
       <ProgrammingLanguage>LAD</ProgrammingLanguage>
       <SetENOAutomatically>false</SetENOAutomatically>
       <UDABlockProperties />
