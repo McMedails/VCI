@@ -21,12 +21,29 @@ BEGIN
 	
 	CASE #Step_100 OF
 	        
-	    0:  // Etape Init
+	    0 :  // Etape Init
 	        #Step_100 := 10;
+	        
+	    10 : // Ouverture Pince
+	        "Obj_St1_Pinces".Open := TRUE;
+	        IF "Obj_St1_Pinces".xOpen THEN
+	            #Step_100 := 20;
+	        END_IF;
+	        
+	    30 : // Fermeture Pince
+	        "Obj_St1_Pinces".Close := TRUE;
+	        IF "Obj_St1_Pinces".xClose THEN
+	            #Step_100 := 20;
+	        END_IF;
 	        
 	END_CASE;
 	
 	
+	"Obj_St1_Axe_X".Move.Abs := TRUE;
+	"Obj_St1_Axe_X".Move.Position := 55;
+	"Obj_St1_Axe_X".Move.Vitesse := 55;
+	"Obj_St1_Axe_X".Move.Acceleration := 100;
+	"Obj_St1_Axe_X".Move.Deceleration := 100;
 	
 END_FUNCTION_BLOCK
 
