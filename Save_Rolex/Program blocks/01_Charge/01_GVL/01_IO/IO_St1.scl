@@ -10,10 +10,10 @@ BEGIN
 	                  (* Input *)
 	
 	    //___ %I1.0 - Pinces de préhension Z : Ouverte
-	//    "St1_In".Pinces_Ouvert := "IO_Pinces_Ouvert";
+	    "St1_In".Pinces_Ouvert := "IO_Pinces_Ouvert";
 	    
 	    //___ %I1.1 - Pinces de préhension Z : Fermée
-	//    "St1_In".Pinces_Fermee := "IO_Pinces_Fermee";
+	    "St1_In".Pinces_Fermee := "IO_Pinces_Fermee";
 	    
 	    //___ %I1.2 - Présence pile devant capteur Chargement AR : C1
 	    "St1_In".Cpt_C1 := "IO_Cpt_C1";
@@ -40,10 +40,10 @@ BEGIN
 	                   (* Output *)
 	    
 	    //___ %Q1.2 - Ouverture : Pinces de préhension 
-	//    "IO_Ouverture_Pinces" := "St1_Out".Ouverture_Pinces;
+	    "IO_Ouverture_Pinces" := "St1_Out".Ouverture_Pinces;
 	    
 	    //___ %Q1.3 - Fermeture : Pinces de préhension
-	//    "IO_Fermeture_Pinces" := "St1_Out".Fermeture_Pinces;
+	    "IO_Fermeture_Pinces" := "St1_Out".Fermeture_Pinces;
 	    
 	    //___ %Q1.4 - Conditions sur voyant C2 : OK
 	    "IO_Vy_PileAV" := "St1_Out".Vy_PileAV;

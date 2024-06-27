@@ -33,17 +33,21 @@ BEGIN
 	    30 : // Fermeture Pince
 	        "Obj_St1_Pinces".Close := TRUE;
 	        IF "Obj_St1_Pinces".xClose THEN
-	            #Step_100 := 20;
+	            #Step_100 := 40;
 	        END_IF;
 	        
 	END_CASE;
 	
+	(*
+	"Obj_St1_Pinces".xOpen
+	"Obj_St1_Prehenseur_Z".Power.On := TRUE;
 	
 	"Obj_St1_Axe_X".Move.Abs := TRUE;
-	"Obj_St1_Axe_X".Move.Position := 55;
+	"Obj_St1_Axe_X".Move.Position := _;
 	"Obj_St1_Axe_X".Move.Vitesse := 55;
 	"Obj_St1_Axe_X".Move.Acceleration := 100;
 	"Obj_St1_Axe_X".Move.Deceleration := 100;
+	*)
 	
 END_FUNCTION_BLOCK
 
